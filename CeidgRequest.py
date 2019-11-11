@@ -1,19 +1,20 @@
 
 from zeep import Client
-from zeep.wsse.username import UsernameToken
 import xmltodict
-import json
 import pickle
 import config
+import random
 from datetime import date, timedelta
+from data import ceidg_api as api
+import os
 
 password = config.password
 url = 'https://datastore.ceidg.gov.pl/CEIDG.DataStore/services/NewDataStoreProvider.svc?wsdl'
 cl = Client(wsdl=url)
 
-start_date = date(2018, 7, 2)
-end_date = date(2018, 7, 15)
-delta = timedelta(days=3)
+start_date = date(2012, 1, 1)
+end_date = date(2018, 11, 1)
+delta = timedelta(weeks=10)
 
 results = []
 
@@ -29,4 +30,11 @@ while start_date < end_date:
 with open('ceidg_ids.pickle', 'wb') as file:
     file.write(pickle.dumps(results))
 
+ceidg_ids = open('ceidg_ids.pickle', 'rb')
+ceidg_ids = pickle.load(ceidg_ids)
 
+random.seed(1234)
+sampled_ids = random.choices(ceidg_ids, k=10)
+
+
+api.ask_with_args(config.password, 'UniqueId', sampled_ids, path=os.getcwd() + '/downloaded_nips/')
