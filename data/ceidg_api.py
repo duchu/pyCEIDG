@@ -19,6 +19,7 @@ import time
 
 def ask_ceidg(password, nips):
     # TODO make restriction for number of requested NIPs equals with daily limit establishef by data provider
+
     client = Client(wsdl='https://datastore.ceidg.gov.pl/CEIDG.DataStore/services/NewDataStoreProvider.svc?wsdl')
     results = {}
 
@@ -32,7 +33,12 @@ def ask_ceidg(password, nips):
     return json.dumps(results, indent=2)
 
 
-def ask_with_args(password, key, values):
+def ask_with_args(password, key, values, path):
+
+    # TODO define default arument for 'path' parmeter
+    # TODO chage path join
+    # TODO Consider make possibility of choice beetween one file and multiple files as output
+
     client = Client(wsdl='https://datastore.ceidg.gov.pl/CEIDG.DataStore/services/NewDataStoreProvider.svc?wsdl')
     results = {}
 
@@ -41,4 +47,11 @@ def ask_with_args(password, key, values):
         collected_xml = client.service.GetMigrationDataExtendedAddressInfo(**requested_item)
         parsed_dict = xmltodict.parse(collected_xml)
         results[value] = parsed_dict['WynikWyszukiwania']['InformacjaOWpisie']
+
+        nip = results[value]['DanePodstawowe']['NIP']
+        with open(path + f'{nip}' + '.json', 'w') as file:
+            json.dump(results[value], file)
         time.sleep(1)
+
+
+
