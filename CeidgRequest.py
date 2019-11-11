@@ -45,3 +45,9 @@ with open('downloaded_nips/ceidg_111119_193842.json') as file:
 
 obj = json.loads(data)
 
+for i in range(len(obj)):
+    obj[i]['_id'] = obj[i]['IdentyfikatorWpisu']
+    obj[i].pop('IdentyfikatorWpisu')
+
+with open('downloaded_nips/temp.json', 'w') as file:
+    json.dump(obj, file, indent=2)
