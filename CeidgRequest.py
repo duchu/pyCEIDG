@@ -4,6 +4,7 @@ import xmltodict
 import pickle
 import config
 import random
+import json
 from datetime import date, timedelta
 from data import ceidg_api as api
 import os
@@ -38,3 +39,9 @@ sampled_ids = random.choices(ceidg_ids, k=10)
 
 
 api.ask_with_args(config.password, 'UniqueId', sampled_ids, path=os.getcwd() + '/downloaded_nips/')
+
+with open('downloaded_nips/ceidg_111119_193842.json') as file:
+    data = file.read()
+
+obj = json.loads(data)
+
