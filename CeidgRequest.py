@@ -35,12 +35,12 @@ ceidg_ids = open('ceidg_ids.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
 random.seed(1234)
-sampled_ids = random.choices(ceidg_ids, k=10)
+sampled_ids = random.choices(ceidg_ids, k=1000)
 
 
 api.ask_with_args(config.password, 'UniqueId', sampled_ids, path=os.getcwd() + '/downloaded_nips/')
 
-with open('downloaded_nips/ceidg_111119_193842.json') as file:
+with open('downloaded_nips/ceidg_111119_230127.json') as file:
     data = file.read()
 
 obj = json.loads(data)
@@ -49,5 +49,5 @@ for i in range(len(obj)):
     obj[i]['_id'] = obj[i]['IdentyfikatorWpisu']
     obj[i].pop('IdentyfikatorWpisu')
 
-with open('downloaded_nips/temp.json', 'w') as file:
+with open('downloaded_nips/ceidg_111119_230127.json', 'w') as file:
     json.dump(obj, file, indent=2)

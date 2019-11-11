@@ -48,9 +48,12 @@ def ask_with_args(password, key, values, path):
     for value in values:
         requested_item = {'AuthToken': password, str(key): value}
         collected_xml = client.service.GetMigrationDataExtendedAddressInfo(**requested_item)
-        parsed_dict = xmltodict.parse(collected_xml)
-        result = [parsed_dict['WynikWyszukiwania']['InformacjaOWpisie']][0]
-        results.append(result)
+        if collected_xml == '<WynikWyszukiwania></WynikWyszukiwania>':
+            pass
+        else:
+            parsed_dict = xmltodict.parse(collected_xml)
+            result = [parsed_dict['WynikWyszukiwania']['InformacjaOWpisie']][0]
+            results.append(result)
         time.sleep(1)
 
     with open(path + 'ceidg_' + f'{now}' + '.json', 'w') as file:
