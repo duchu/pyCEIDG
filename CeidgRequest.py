@@ -34,11 +34,17 @@ with open('ceidg_ids.pickle', 'wb') as file:
 ceidg_ids = open('ceidg_ids.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
-random.seed(1234)
-sampled_ids = random.choices(ceidg_ids, k=1000)
+random.seed(123)
+sampled_ids = random.choices(ceidg_ids, k=500)
 
+j = 30000
+k = 33000
 
-api.ask_with_args(config.password, 'UniqueId', sampled_ids, path=os.getcwd() + '/downloaded_nips/')
+while k <= 33000:
+    api.ask_with_args(config.password, 'UniqueId', ceidg_ids[j:k], path=os.getcwd() + '/downloaded_nips/')
+    j += 1000
+    k += 1000
+
 
 with open('downloaded_nips/ceidg_111119_230127.json') as file:
     data = file.read()
