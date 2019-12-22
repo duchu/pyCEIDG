@@ -54,7 +54,7 @@ def ask_with_args(password, key, values, path):
             parsed_dict = xmltodict.parse(collected_xml)
             result = [parsed_dict['WynikWyszukiwania']['InformacjaOWpisie']][0]
             results.append(result)
-        time.sleep(1)
+        # time.sleep(1)
 
     with open(path + 'ceidg_' + f'{now}' + '.json', 'w') as file:
         json.dump(results, file, indent=2)

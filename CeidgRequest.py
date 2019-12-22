@@ -35,13 +35,13 @@ while start_date < end_date:
 ceidg_ids = open('ceidg_ids.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
-j = 1000
-k = 3000
+j = 1800000
+k = 1810000
 
-while k <= 20000:
+while k <= 2000000:
     api.ask_with_args(config.password, 'UniqueId', ceidg_ids[j:k], path=os.getcwd() + '/downloaded_nips/')
-    j += 2000
-    k += 2000
+    j += 10000
+    k += 10000
 
 # Prepraring data for mongoimport --------------------------------------------------------------------------------------
 
@@ -54,8 +54,11 @@ for file in files:
         obj = json.loads(data)
 
         for i in range(len(obj)):
-            obj[i]['_id'] = obj[i]['IdentyfikatorWpisu']
-            obj[i].pop('IdentyfikatorWpisu')
+            if 'IdentyfikatorWpisu' not in obj[i].keys():
+                pass
+            else:
+                obj[i]['_id'] = obj[i]['IdentyfikatorWpisu']
+                obj[i].pop('IdentyfikatorWpisu')
 
     with open(os.path.join(os.path.abspath('downloaded_nips'), file), 'w') as f:
         json.dump(obj, f, indent=2)
