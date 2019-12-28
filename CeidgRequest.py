@@ -39,7 +39,7 @@ j = 1800000
 k = 1810000
 
 while k <= 2000000:
-    api.ask_with_args(config.password, 'UniqueId', ceidg_ids[j:k], path=os.getcwd() + '/downloaded_nips/')
+    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[j:k], path=os.getcwd() + '/downloaded_nips/')
     j += 10000
     k += 10000
 
