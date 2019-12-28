@@ -2,3 +2,7 @@
 .idea
 /ceidg_ids.pickle
 /downloaded_nips/
+__pycache__/
+data/__pycache__/
+
+
