@@ -1,7 +1,9 @@
-from zeep import Client
+
 import xmltodict
 import json
 import time
+from datetime import datetime
+from zeep import Client
 
 # TODO Make documentation of fucntions
 # TODO Concern build nested function (ask_ceidg inside ask_ceidg_multiple)
@@ -19,6 +21,7 @@ import time
 
 def ask_ceidg(password, nips):
     # TODO make restriction for number of requested NIPs equals with daily limit establishef by data provider
+
     client = Client(wsdl='https://datastore.ceidg.gov.pl/CEIDG.DataStore/services/NewDataStoreProvider.svc?wsdl')
     results = {}
 
@@ -32,13 +35,29 @@ def ask_ceidg(password, nips):
     return json.dumps(results, indent=2)
 
 
-def ask_with_args(password, key, values):
+def get_ceidg_data(password, key, values, path):
+
+    # TODO define default arument for 'path' parmeter
+    # TODO chage path join
+    # TODO Consider make possibility of choice beetween one file and multiple files as output
+
     client = Client(wsdl='https://datastore.ceidg.gov.pl/CEIDG.DataStore/services/NewDataStoreProvider.svc?wsdl')
-    results = {}
+    results = []
+    now = datetime.now().strftime('%d%m%y_%H%M%S')
 
     for value in values:
         requested_item = {'AuthToken': password, str(key): value}
         collected_xml = client.service.GetMigrationDataExtendedAddressInfo(**requested_item)
-        parsed_dict = xmltodict.parse(collected_xml)
-        results[value] = parsed_dict['WynikWyszukiwania']['InformacjaOWpisie']
-        time.sleep(1)
+        if collected_xml == '<WynikWyszukiwania></WynikWyszukiwania>':
+            pass
+        else:
+            parsed_dict = xmltodict.parse(collected_xml)
+            result = [parsed_dict['WynikWyszukiwania']['InformacjaOWpisie']][0]
+            results.append(result)
+        # time.sleep(1)
+
+    with open(path + 'ceidg_' + f'{now}' + '.json', 'w') as file:
+        json.dump(results, file, indent=2)
+
+
+
