@@ -35,7 +35,7 @@ def ask_ceidg(password, nips):
     return json.dumps(results, indent=2)
 
 
-def ask_with_args(password, key, values, path):
+def get_ceidg_data(password, key, values, path):
 
     # TODO define default arument for 'path' parmeter
     # TODO chage path join
