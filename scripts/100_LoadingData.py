@@ -5,6 +5,8 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 db = myclient['ceidg']
 entries = db['entries']
 
+# TODO Improve Sex feature by take nationality into acountc
+
 query_result = entries.aggregate(
     [
         {'$match': {
@@ -45,10 +47,21 @@ query_result = entries.aggregate(
             'IsFax': {'$cond': [{'$ne': ['$DaneKontaktowe.Faks', None]}, 1, 0]},
             'IsWWW': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresStronyInternetowej', None]}, 1, 0]},
             'CommunityProperty': '$DaneDodatkowe.MalzenskaWspolnoscMajatkowa',
-            'Sex': {'$cond': [{'$regexMatch': {'input': '$DanePodstawowe.Imie', 'regex': 'a$', 'options': 'i'}}, 'F', 'M']}
+            'Sex': {
+                '$cond': [{'$regexMatch': {'input': '$DanePodstawowe.Imie', 'regex': 'a$', 'options': 'i'}}, 'F', 'M']
+            },
+            'Citizenship': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
+            'HasPolishCitizenship': {
+                '$cond': [{'$regexMatch': {'input': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
+                                           'regex': 'Polska',
+                                           'options': 'i'}}, 1, 0]
+            },
+            'ShareholderInOtherCompanies':
+                {'$cond': [{'$ne': ['$SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca', None]}, 1, 0]}
         }
         },
         {'$limit': 100}
+
     ]
 
 )
