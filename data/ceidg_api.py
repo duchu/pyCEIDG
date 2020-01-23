@@ -7,6 +7,7 @@ from zeep import Client
 
 # TODO Make documentation of fucntions
 # TODO Concern build nested function (ask_ceidg inside ask_ceidg_multiple)
+# TODO fix bug that occures during request only 1 entry (returning empty list)
 
 
 # def ask_ceidg(password, nip):

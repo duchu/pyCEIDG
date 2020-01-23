@@ -5,107 +5,216 @@ myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 db = myclient['ceidg']
 entries = db['entries']
 
-# TODO Improve Sex feature by take nationality into acountc
+# TODO Improve Sex feature by take nationality into acount
+# TODO Find out what means last letter in 'DaneDodatkowe.KodyPKD' field
 
-query_result = entries.aggregate(
-    [
-        {'$match': {
-            '$or': [
-                {'DaneDodatkowe.Status': 'Aktywny'},
-                {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01'}},
-                {'DaneDodatkowe.DataWykresleniaWpisuZRejestru': {'$gte': '2017-11-01'}},
-                {'DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01'}}
-            ]
+query_result = entries.aggregate([
+    {'$match': {
+        '$or': [
+            {'DaneDodatkowe.Status': 'Aktywny'},
+            {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01'}},
+            {'DaneDodatkowe.DataWykresleniaWpisuZRejestru': {'$gte': '2017-11-01'}},
+            {'DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01'}}
+        ]
+    }
+    },
+    {'$project': {
+        '_id': 1,
+        'NIP': '$DanePodstawowe.NIP',
+        'Status': '$DaneDodatkowe.Status',
+        'StartingDateOfTheBusiness': '$DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej',
+        'SuspensionDateOfTheBusiness': '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej',
+        'ResumptionDateOfTheBusiness': '$DaneDodatkowe.DataWznowieniaWykonywaniaDzialalnosciGospodarczej',
+        'TerminationDateOfTheBusiness': '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej',
+        'DeletionDateFromTheRegister': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
+        'MonthOfStartingTheBusiness': {
+            '$month': {'$toDate': '$DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej'}
+        },
+        'MainAddressCounty': {'$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat'},
+        'MainAddressVoivodeship': {
+            '$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Wojewodztwo'
+        },
+        'CorrespondenceAddressCounty': {'$toUpper': '$DaneAdresowe.AdresDoDoreczen.Powiat'},
+        'CorrespondenceAddressVoivodeship': {'$toUpper': '$DaneAdresowe.AdresDoDoreczen.Wojewodztwo'},
+        'MainAndCorrespondenceAreTheSame': {
+            '$and':
+                [{'$eq': ['$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.SIMC',
+                          '$DaneAdresowe.AdresDoDoreczen.SIMC']
+                  },
+                 {'$eq': ['$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.ULIC',
+                          '$DaneAdresowe.AdresDoDoreczen.ULIC']
+                  }]
+        },
+        'NoOfAdditionalPlaceOfTheBusiness':
+            {'$size':
+                 {'$ifNull':
+                      [{'$cond': [{'$isArray': '$DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci.Adres'},
+                                  '$DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci.Adres',
+                                  {'$objectToArray': '$DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci'}]
+                        }, []]
+
+                  }
+             },
+        'IsPhoneNo': {'$cond': [{'$ne': ['$DaneKontaktowe.Telefon', None]}, 1, 0]},
+        'IsEmail': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresPocztyElektronicznej', None]}, 1, 0]},
+        'IsFax': {'$cond': [{'$ne': ['$DaneKontaktowe.Faks', None]}, 1, 0]},
+        'IsWWW': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresStronyInternetowej', None]}, 1, 0]},
+        'CommunityProperty': '$DaneDodatkowe.MalzenskaWspolnoscMajatkowa',
+        'HasLicences': {'$cond': [{'$gt': ['$Uprawnienia', None]}, 1, 0]},
+        'NoOfLicences':
+            {'$size':
+                 {'$ifNull':
+                      [{'$cond': [{'$isArray': '$Uprawnienia.Uprawnienie'}, '$Uprawnienia.Uprawnienie',
+                                  {'$objectToArray': '$Uprawnienia'}
+                                  ]
+                        }, []]
+                  }
+             },
+        'Sex': {
+            '$cond': [{'$regexMatch': {'input': '$DanePodstawowe.Imie', 'regex': 'a$', 'options': 'i'}}, 'F', 'M']
+        },
+        'Citizenship': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
+        'HasPolishCitizenship': {
+            '$cond': [{'$regexMatch': {'input': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
+                                       'regex': 'Polska',
+                                       'options': 'i'
+                                       }
+                       }, 1, 0]
+        },
+        'NoOfCitizenships': {'$size': {
+            '$ifNull': [{'$split': ['$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw', ', ']}, []]
         }
         },
-        {'$project': {
-            '_id': 1,
-            'NIP': '$DanePodstawowe.NIP',
-            'Status': '$DaneDodatkowe.Status',
-            'StartingDateOfTheBusiness': '$DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej',
-            'SuspensionDateOfTheBusiness': '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej',
-            'ResumptionDateOfTheBusiness': '$DaneDodatkowe.DataWznowieniaWykonywaniaDzialalnosciGospodarczej',
-            'TerminationDateOfTheBusiness': '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej',
-            'DeletionDateFromTheRegister': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
-            'MainAddressCounty': {'$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat'},
-            'MainAddressVoivodeship': {
-                '$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Wojewodztwo'
-            },
-            'CorrespondenceAddressCounty': {'$toUpper': '$DaneAdresowe.AdresDoDoreczen.Powiat'},
-            'CorrespondenceAddressVoivodeship': {'$toUpper': '$DaneAdresowe.AdresDoDoreczen.Wojewodztwo'},
-            'MainAndCorrespondenceAreTheSame': {
-                '$and':
-                    [{'$eq': ['$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.SIMC',
-                              '$DaneAdresowe.AdresDoDoreczen.SIMC']
-                      },
-                     {'$eq': ['$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.ULIC',
-                              '$DaneAdresowe.AdresDoDoreczen.ULIC']
-                      }]
-            },
-            'IsPhoneNo': {'$cond': [{'$ne': ['$DaneKontaktowe.Telefon', None]}, 1, 0]},
-            'IsEmail': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresPocztyElektronicznej', None]}, 1, 0]},
-            'IsFax': {'$cond': [{'$ne': ['$DaneKontaktowe.Faks', None]}, 1, 0]},
-            'IsWWW': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresStronyInternetowej', None]}, 1, 0]},
-            'CommunityProperty': '$DaneDodatkowe.MalzenskaWspolnoscMajatkowa',
-            'Sex': {
-                '$cond': [{'$regexMatch': {'input': '$DanePodstawowe.Imie', 'regex': 'a$', 'options': 'i'}}, 'F', 'M']
-            },
-            'Citizenship': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
-            'HasPolishCitizenship': {
-                '$cond': [{'$regexMatch': {'input': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
-                                           'regex': 'Polska',
-                                           'options': 'i'}}, 1, 0]
-            },
-            'ShareholderInOtherCompanies':
-                {'$cond': [{'$ne': ['$SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca', None]}, 1, 0]}
-        }
+        'ShareholderInOtherCompanies':
+            {'$cond': [{'$ne': ['$SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca', None]}, 1, 0]},
+        'KodyPKD': '$DaneDodatkowe.KodyPKD',
+        'AllPKDCodes': {'$split': ['$DaneDodatkowe.KodyPKD', ',']},
+        'AllPKDDivisions': {
+            '$map': {'input': {'$split': ['$DaneDodatkowe.KodyPKD', ',']},
+                     'as': 'new',
+                     'in': {'$substrCP': ['$$new', 0, 2]}
+                     }
         },
-        {'$limit': 100}
+        'AllPKDGroups': {
+            '$map': {'input': {'$split': ['$DaneDodatkowe.KodyPKD', ',']},
+                     'as': 'new',
+                     'in': {'$substrCP': ['$$new', 0, 3]}
+                     }
+        },
+        'AllPKDClasses': {
+            '$map': {'input': {'$split': ['$DaneDodatkowe.KodyPKD', ',']},
+                     'as': 'new',
+                     'in': {'$substrCP': ['$$new', 0, 4]}
+                     }
+        }
+    }
+    },
+    {'$limit': 10000},
+    {'$addFields':
+        {'AllPKDSections': {
+            '$map': {'input': '$AllPKDDivisions',
+                     'as': 'new',
+                     'in': {'$concat':
+                                [{'$cond': [{'$lte': ['$$new', '03']}, 'A', '']},
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '04']},
+                                                      {'$lte': ['$$new', '09']}]
+                                             },
+                                            'B', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '10']},
+                                                      {'$lte': ['$$new', '33']}]
+                                             },
+                                            'C', '']
+                                  },
+                                 {'$cond': [{'$eq': ['$$new', '35']}, 'D', '']},
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '36']},
+                                                      {'$lte': ['$$new', '39']}]
+                                             },
+                                            'E', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '41']},
+                                                      {'$lte': ['$$new', '43']}]
+                                             },
+                                            'F', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '45']},
+                                                      {'$lte': ['$$new', '47']}]
+                                             },
+                                            'G', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '49']},
+                                                      {'$lte': ['$$new', '53']}]
+                                             },
+                                            'H', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '55']},
+                                                      {'$lte': ['$$new', '56']}]
+                                             },
+                                            'I', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '58']},
+                                                      {'$lte': ['$$new', '62']}]
+                                             },
+                                            'J', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '64']},
+                                                      {'$lte': ['$$new', '66']}]
+                                             },
+                                            'K', '']
+                                  },
+                                 {'$cond': [{'$eq': ['$$new', '68']}, 'L', '']},
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '69']},
+                                                      {'$lte': ['$$new', '75']}]
+                                             },
+                                            'M', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '77']},
+                                                      {'$lte': ['$$new', '82']}]
+                                             },
+                                            'N', '']
+                                  },
+                                 {'$cond': [{'$eq': ['$$new', '84']}, 'O', '']},
+                                 {'$cond': [{'$eq': ['$$new', '85']}, 'P', '']},
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '86']},
+                                                      {'$lte': ['$$new', '88']}]
+                                             },
+                                            'Q', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '90']},
+                                                      {'$lte': ['$$new', '93']}]
+                                             },
+                                            'R', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '94']},
+                                                      {'$lte': ['$$new', '96']}]
+                                             },
+                                            'S', '']
+                                  },
+                                 {'$cond': [{'$and': [{'$gte': ['$$new', '97']},
+                                                      {'$lte': ['$$new', '98']}]
+                                             },
+                                            'T', '']
+                                  },
+                                 {'$cond': [{'$eq': ['$$new', '99']}, 'U', '']},
 
-    ]
-
-)
+                                 ]
+                            }
+                     }
+        }
+        }
+    },
+    {'$addFields':
+         {'NoOfUniquePKDSections': {'$size': {'$ifNull': [{'$setDifference': ['$AllPKDSections', []]}, []]}},
+          'NoOfUniquePKDDivsions': {'$size': {'$ifNull': [{'$setDifference': ['$AllPKDDivisions', []]}, []]}},
+          'NoOfUniquePKDGroups': {'$size': {'$ifNull': [{'$setDifference': ['$AllPKDGroups', []]}, []]}},
+          'NoOfUniquePKDClasses': {'$size': {'$ifNull': [{'$setDifference': ['$AllPKDClasses', []]}, []]}},
+          'PKDMainSection': {'$arrayElemAt': ['$AllPKDSections', 0]},
+          'PKDMainDivision': {'$arrayElemAt': ['$AllPKDDivisions', 0]},
+          'PKDMainGroup': {'$arrayElemAt': ['$AllPKDGroups', 0]},
+          'PKDMainClass': {'$arrayElemAt': ['$AllPKDClasses', 0]},
+          }
+     },
+    {'$limit': 1000}
+])
 
 query_result = list(query_result)
-
-# entries.find(
-#     filter={'DaneDodatkowe.Status': 'Aktywny'},
-#     projection={'DanePodstawowe.Imie': 1,
-#                 'DanePodstawowe.NIP': 1,
-#                 'DaneKontaktowe.AdresPocztyElektronicznej': 1,
-#                 'DaneKontaktowe.AdresStronyInternetowej': 1,
-#                 'DaneKontaktowe.Telefon': 1,
-#                 'DaneKontaktowe.Faks': 1,
-#                 'DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Miejscowosc': 1,
-#                 'DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Ulica': 1,
-#                 'DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Budynek': 1,
-#                 'DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.KodPocztowy': 1,
-#                 'DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat': 1,
-#                 'DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Wojewodztwo': 1,
-#                 'DaneAdresowe.AdresDoDoreczen.Miejscowosc': 1,
-#                 'DaneAdresowe.AdresDoDoreczen.Ulica': 1,
-#                 'DaneAdresowe.AdresDoDoreczen.Budynek': 1,
-#                 'DaneAdresowe.AdresDoDoreczen.KodPocztowy': 1,
-#                 'DaneAdresowe.AdresDoDoreczen.Powiat': 1,
-#                 'DaneAdresowe.AdresDoDoreczen.Wojewodztwo': 1,
-#                 'DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci.Adres.Miejscowosc': 1,
-#                 'DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci.Adres.Ulica': 1,
-#                 'DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci.Adres.Budynek': 1,
-#                 'DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci.Adres.KodPocztowy': 1,
-#                 'DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci.Adres.Powiat': 1,
-#                 'DaneAdresowe.AdresyDodatkowychMiejscWykonywaniaDzialalnosci.Adres.Wojewodztwo': 1,
-#                 'PrzedsiebiorcaPosiadaObywatelstwaPanstw': 1,
-#                 'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': 1,
-#                 'DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej': 1,
-#                 'DaneDodatkowe.DataWznowieniaWykonywaniaDzialalnosciGospodarczej': 1,
-#                 'DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej': 1,
-#                 'DaneDodatkowe.DataWykresleniaWpisuZRejestru': 1,
-#                 'DaneDodatkowe.MalzenskaWspolnoscMajatkowa': 1,
-#                 'DaneDodatkowe.Status': 1,
-#                 'DaneDodatkowe.KodyPKD': 1,
-#                 'SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca': 1,
-#                 'Zakazy': 1,
-#
-#
-#                 }
-# ).limit(5)
