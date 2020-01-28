@@ -5,7 +5,7 @@ import pickle
 import config
 import json
 from datetime import date, timedelta
-from data import ceidg_api as api
+from scripts import functions as api
 import os
 
 password = config.password

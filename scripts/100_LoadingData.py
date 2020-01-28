@@ -1,4 +1,7 @@
 import pymongo
+import pickle
+import pandas as pd
+from os import path
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 
@@ -27,8 +30,10 @@ query_result = entries.aggregate([
         'ResumptionDateOfTheBusiness': '$DaneDodatkowe.DataWznowieniaWykonywaniaDzialalnosciGospodarczej',
         'TerminationDateOfTheBusiness': '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej',
         'DeletionDateFromTheRegister': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
-        'MonthOfStartingTheBusiness': {
-            '$month': {'$toDate': '$DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej'}
+        'DateOfTerminationOrSuspension': {
+            '$ifNull': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
+                        '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
+
         },
         'MainAddressCounty': {'$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat'},
         'MainAddressVoivodeship': {
@@ -109,7 +114,6 @@ query_result = entries.aggregate([
         }
     }
     },
-    {'$limit': 10000},
     {'$addFields':
         {'AllPKDSections': {
             '$map': {'input': '$AllPKDDivisions',
@@ -212,9 +216,26 @@ query_result = entries.aggregate([
           'PKDMainDivision': {'$arrayElemAt': ['$AllPKDDivisions', 0]},
           'PKDMainGroup': {'$arrayElemAt': ['$AllPKDGroups', 0]},
           'PKDMainClass': {'$arrayElemAt': ['$AllPKDClasses', 0]},
+          'StartDate': {'$cond':
+                            [{'$lt':
+                                  ['$StartingDateOfTheBusiness', '2017-11-01']
+                              }, '2017-11-01', '$StartingDateOfTheBusiness']
+                        },
+          'EndDate': {'$cond':
+              [{'$or': [
+                  {'$gt': ['$DateOfTerminationOrSuspension', '2018-11-01']},
+                  {'$eq': ['$DateOfTerminationOrSuspension', None]}]
+              },
+                  '2018-11-01',
+                  '$DateOfTerminationOrSuspension']
+          }
           }
      },
-    {'$limit': 1000}
+    {'$limit': 10000}
 ])
 
 query_result = list(query_result)
+raw_data = pd.DataFrame(query_result)
+raw_data.to_pickle('results/raw_data.pickle')
+
+del query_result, raw_data
