@@ -5,7 +5,7 @@ import pickle
 import config
 import json
 from datetime import date, timedelta
-from scripts import functions as api
+from funs import functions as api
 import os
 
 password = config.password
@@ -14,9 +14,9 @@ cl = Client(wsdl=url)
 
 # Defining requested time range of data --------------------------------------------------------------------------------
 
-start_date = date(2012, 6, 1)
-end_date = date(2018, 11, 1)
-delta = timedelta(weeks=10)
+start_date = date(2009, 1, 1)
+end_date = date(2009, 12, 31)
+delta = timedelta(weeks=4)
 
 results = []
 
@@ -29,17 +29,18 @@ while start_date < end_date:
     start_date += delta
     print('DateFrom: ' f'{start_date}', ', DateTo: ' f'{start_date + delta} passed!')
 
-# with open('ceidg_ids.pickle', 'wb') as file:
-#     file.write(pickle.dumps(results))
 
-ceidg_ids = open('ceidg_ids.pickle', 'rb')
+with open('ceidg_ids_2009.pickle', 'wb') as file:
+    file.write(pickle.dumps(results))
+
+ceidg_ids = open('ceidg_ids_2009.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
-j = 1800000
-k = 1810000
+j = 170000
+k = 180000
 
-while k <= 2000000:
-    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[j:k], path=os.getcwd() + '/downloaded_nips/')
+while k <= 210000:
+    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[210000:221623], path=os.getcwd() + '/downloaded_nips/')
     j += 10000
     k += 10000
 
@@ -54,6 +55,8 @@ for file in files:
         obj = json.loads(data)
 
         for i in range(len(obj)):
+            # print(i)
+            # print(obj[i].keys())
             if 'IdentyfikatorWpisu' not in obj[i].keys():
                 pass
             else:

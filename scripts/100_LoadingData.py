@@ -1,7 +1,5 @@
-import pymongo
-import pickle
 import pandas as pd
-from os import path
+import pymongo
 
 myclient = pymongo.MongoClient("mongodb://localhost:27017/")
 
@@ -10,12 +8,16 @@ entries = db['entries']
 
 # TODO Improve Sex feature by take nationality into acount
 # TODO Find out what means last letter in 'DaneDodatkowe.KodyPKD' field
+# TODO remove unused objects in order to clear memory
 
 query_result = entries.aggregate([
     {'$match': {
         '$or': [
             {'DaneDodatkowe.Status': 'Aktywny'},
-            {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01'}},
+            {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01',
+                                                                                  '$lte': '2018-11-01'
+                                                                                  }
+             },
             {'DaneDodatkowe.DataWykresleniaWpisuZRejestru': {'$gte': '2017-11-01'}},
             {'DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01'}}
         ]
@@ -64,7 +66,14 @@ query_result = entries.aggregate([
         'IsEmail': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresPocztyElektronicznej', None]}, 1, 0]},
         'IsFax': {'$cond': [{'$ne': ['$DaneKontaktowe.Faks', None]}, 1, 0]},
         'IsWWW': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresStronyInternetowej', None]}, 1, 0]},
-        'CommunityProperty': '$DaneDodatkowe.MalzenskaWspolnoscMajatkowa',
+        'CommunityProperty':
+            {'$cond':
+                 [{'$regexMatch':
+                       {'input': '$DaneDodatkowe.MalzenskaWspolnoscMajatkowa', 'regex': 'data', 'options': 'i'}
+                   },
+                  'ustała',
+                  '$DaneDodatkowe.MalzenskaWspolnoscMajatkowa']
+             },
         'HasLicences': {'$cond': [{'$gt': ['$Uprawnienia', None]}, 1, 0]},
         'NoOfLicences':
             {'$size':
@@ -216,26 +225,112 @@ query_result = entries.aggregate([
           'PKDMainDivision': {'$arrayElemAt': ['$AllPKDDivisions', 0]},
           'PKDMainGroup': {'$arrayElemAt': ['$AllPKDGroups', 0]},
           'PKDMainClass': {'$arrayElemAt': ['$AllPKDClasses', 0]},
-          'StartDate': {'$cond':
-                            [{'$lt':
-                                  ['$StartingDateOfTheBusiness', '2017-11-01']
-                              }, '2017-11-01', '$StartingDateOfTheBusiness']
+          'StartDate': {'$toDate': {'$cond':
+                                        [{'$lt':
+                                              ['$StartingDateOfTheBusiness', '2017-11-01']
+                                          }, '2017-11-01', '$StartingDateOfTheBusiness']
+                                    }
                         },
-          'EndDate': {'$cond':
-              [{'$or': [
-                  {'$gt': ['$DateOfTerminationOrSuspension', '2018-11-01']},
-                  {'$eq': ['$DateOfTerminationOrSuspension', None]}]
-              },
-                  '2018-11-01',
-                  '$DateOfTerminationOrSuspension']
+          'EndDate': {'$toDate':
+              {'$cond':
+                  [{'$or': [
+                      {'$gt': ['$DateOfTerminationOrSuspension', '2018-11-01']},
+                      {'$eq': ['$DateOfTerminationOrSuspension', None]}]
+                  },
+                      '2018-11-01',
+                      '$DateOfTerminationOrSuspension']
+              }
           }
           }
      },
-    {'$limit': 10000}
+    {'$project':
+         {'NIP': 1,
+          'Status': 1,
+          'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
+          ''
+          'DateOfTerminationOrSuspension': {'$toDate': '$DateOfTerminationOrSuspension'},
+          'StartDate': 1,
+          'EndDate': 1,
+          'MainAddressCounty': 1,
+          'MainAddressVoivodeship': 1,
+          'CorrespondenceAddressCounty': 1,
+          'CorrespondenceAddressVoivodeship': 1,
+          'MainAndCorrespondenceAreTheSame': 1,
+          'NoOfAdditionalPlaceOfTheBusiness': 1,
+          'IsPhoneNo': 1,
+          'IsEmail': 1,
+          'IsFax': 1,
+          'IsWWW': 1,
+          'CommunityProperty': 1,
+          'HasLicences': 1,
+          'NoOfLicences': 1,
+          'Sex': 1,
+          'Citizenship': 1,
+          'HasPolishCitizenship': 1,
+          'NoOfCitizenships': 1,
+          'ShareholderInOtherCompanies': 1,
+          'PKDMainSection': 1,
+          'PKDMainDivision': 1,
+          'PKDMainGroup': 1,
+          'PKDMainClass': 1,
+          'NoOfUniquePKDSections': 1,
+          'NoOfUniquePKDDivsions': 1,
+          'NoOfUniquePKDGroups': 1,
+          'NoOfUniquePKDClasses': 1
+          }
+     },
+    # {'$limit': 100000},
+
 ])
 
 query_result = list(query_result)
-raw_data = pd.DataFrame(query_result)
+
+# comment block --------
+
+db['preprocessed_tmp'].insert_many(query_result)
+nip_tmp = db['preprocessed_tmp']
+
+no_of_businesses_query = nip_tmp.aggregate([
+    {'$lookup':
+         {'from': 'entries',
+          'localField': 'NIP',
+          'foreignField': 'DanePodstawowe.NIP',
+          'as': 'nip_tmp'
+          }
+     },
+    {'$unwind':
+         {'path': '$nip_tmp'}
+     },
+    {'$project':
+         {'_id': 1,
+          'NIP': 1,
+          'nip_tmp._id': 1,
+          'PastBusinesses':
+              {'$gt': ['$StartingDateOfTheBusiness',
+                       {'$toDate': '$nip_tmp.DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej'}]
+               }
+          }
+     },
+    {'$match': {'PastBusinesses': True}},
+    {'$group':
+         {'_id': {'NIP': '$NIP'},
+          'n': {'$sum': 1}
+          }
+     },
+    {'$project':
+         {'_id': 0,
+          'NIP': '$_id.NIP',
+          'NoOfPastBusinesses': '$n'
+          }
+     }
+])
+
+no_of_businesses_results = list(no_of_businesses_query)
+
+preprocessed_data = pd.DataFrame(query_result)
+no_of_businesses_data = pd.DataFrame(no_of_businesses_results)
+
+raw_data = pd.merge(preprocessed_data, no_of_businesses_data, how='left', on='NIP')
+
 raw_data.to_pickle('results/raw_data.pickle')
 
-del query_result, raw_data
