@@ -10,6 +10,13 @@ sampled_raw_data = raw_data.sample(40000)
 
 del raw_data
 
+# TODO Remove records with NIP as NaN
+
+# -- Imputing missing values -------------------------------------------------------------------------------------------
+
+sampled_raw_data['NoOfPastBusinesses'] = sampled_raw_data.NoOfPastBusinesses.fillna(0).astype(int)
+
+
 # -- Creating new variables from existing ones -------------------------------------------------------------------------
 
 # - Duration of Existence
@@ -26,25 +33,27 @@ sampled_raw_data['DurationOfExistenceInMonths'] = sampled_raw_data.DurationOfExi
 
 # - Month of Starting of the Business
 
+tmp_df = sampled_raw_data.loc[:,
+         ['NIP',
+          'StartDate',
+          'EndDate',
+          'DurationOfExistenceInMonths',
+          'StartingDateOfTheBusiness']].sort_values(by='DurationOfExistenceInMonths').head()
+
 sampled_raw_data['MonthOfStartingOfTheBusiness'] = sampled_raw_data.StartingDateOfTheBusiness.dt.month_name()
 
 cols_to_drop = ['Status', 'StartDate', 'EndDate']
 
 #  -- Target varibale
 
-sampled_raw_data['Survived'] = sampled_raw_data.RandomDatePlus12M > sampled_raw_data.DateOfTerminationOrSuspension
-sampled_raw_data['Survived'] = sampled_raw_data.Survived.astype(int)
+sampled_raw_data['Target'] = sampled_raw_data.RandomDatePlus12M > sampled_raw_data.DateOfTerminationOrSuspension
+sampled_raw_data['Target'] = sampled_raw_data.Target.astype(int)
 
 sampled_raw_data = sampled_raw_data.drop(columns=cols_to_drop)
 sampled_raw_data = sampled_raw_data.reset_index()
 
 # -- save DataFrame to files -------------------------------------------------------------------------------------------
 
-sampled_raw_data.to_feather('results/ceidg_data.feather')
-sampled_raw_data.to_pickle('results/ceidg_data.pickle')
+sampled_raw_data.to_feather('results/ceidg_data_sample.feather')
+sampled_raw_data.to_pickle('results/ceidg_data_sample.pickle')
 
-tmp = db['tmp_nip']
-
-query_list = list(query)
-
-tmp_df = pd.DataFrame(query_list)

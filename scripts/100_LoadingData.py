@@ -9,8 +9,42 @@ entries = db['entries']
 # TODO Improve Sex feature by take nationality into acount
 # TODO Find out what means last letter in 'DaneDodatkowe.KodyPKD' field
 # TODO remove unused objects in order to clear memory
+# TODO Correct order of converting string to dates, romove duplicated conversion
 
 query_result = entries.aggregate([
+    {'$match': {'DanePodstawowe.NIP': '1180454558'}},
+    {'$addFields':
+         {'RealDateOfSuspension':
+              {'$cond':
+                   [{'$regexMatch':
+                         {'input': '$DaneDodatkowe.PodstawaPrawnaWykreslenia.Informacja',
+                          'regex': '^art. 34 ust',
+                          'options': 'i'
+                          }
+                     },
+                    {'$dateToString':
+                         {'format': "%Y-%m-%d",
+                          'date':
+                              {'$subtract':
+                                   [{'$toDate': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru'},
+                                    1000 * 3600 * 24 * 365 * 2]
+                               }
+                          }
+                     },
+                    '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
+               }
+
+          }
+     },
+    {'$addFields':
+         {'DateOfTerminationOrSuspension':
+             {'$ifNull': [
+              {'$cond': [{'$gt': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfSuspension']},
+                         '$RealDateOfSuspension',
+                         '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
+               }, '$DaneDodatkowe.DataWykresleniaWpisuZRejestru']}
+          }
+     },
     {'$match': {
         '$or': [
             {'DaneDodatkowe.Status': 'Aktywny'},
@@ -19,10 +53,14 @@ query_result = entries.aggregate([
                                                                                   }
              },
             {'DaneDodatkowe.DataWykresleniaWpisuZRejestru': {'$gte': '2017-11-01'}},
-            {'DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01'}}
+            {'DateOfTerminationOrSuspension': {'$gte': '2017-11-01'}}
         ]
     }
     },
+    {'$match': {'DanePodstawowe.NIP': {'$ne': None},
+                'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lt': '2018-11-01'}
+                }
+     },
     {'$project': {
         '_id': 1,
         'NIP': '$DanePodstawowe.NIP',
@@ -32,11 +70,11 @@ query_result = entries.aggregate([
         'ResumptionDateOfTheBusiness': '$DaneDodatkowe.DataWznowieniaWykonywaniaDzialalnosciGospodarczej',
         'TerminationDateOfTheBusiness': '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej',
         'DeletionDateFromTheRegister': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
-        'DateOfTerminationOrSuspension': {
-            '$ifNull': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
-                        '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
-
-        },
+        'DateOfTerminationOrSuspension': 1,
+        #     '$ifNull': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfSuspenison']
+        # },
+        'RealDateOfSuspension': 1,
+        # 'RealDateOfSuspensionOrTermination': 1,
         'MainAddressCounty': {'$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat'},
         'MainAddressVoivodeship': {
             '$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Wojewodztwo'
@@ -247,8 +285,9 @@ query_result = entries.aggregate([
          {'NIP': 1,
           'Status': 1,
           'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
-          ''
           'DateOfTerminationOrSuspension': {'$toDate': '$DateOfTerminationOrSuspension'},
+          'RealDateOfSuspension': 1,
+          'RealDateOfSuspensionOrTermination': 1,
           'StartDate': 1,
           'EndDate': 1,
           'MainAddressCounty': 1,
@@ -279,18 +318,24 @@ query_result = entries.aggregate([
           'NoOfUniquePKDClasses': 1
           }
      },
-    # {'$limit': 100000},
+    {'$limit': 100},
 
 ])
 
 query_result = list(query_result)
+
+# preprocessed_data = pd.DataFrame(query_result)
+# preprocessed_data['Date'] = preprocessed_data.StartingDateOfTheBusiness.dt.strftime('%Y-%m-%d')
 
 # comment block --------
 
 db['preprocessed_tmp'].insert_many(query_result)
 nip_tmp = db['preprocessed_tmp']
 
+# del query_result
+
 no_of_businesses_query = nip_tmp.aggregate([
+    # {'$match': {'NIP': '8511001795'}},
     {'$lookup':
          {'from': 'entries',
           'localField': 'NIP',
@@ -304,33 +349,45 @@ no_of_businesses_query = nip_tmp.aggregate([
     {'$project':
          {'_id': 1,
           'NIP': 1,
-          'nip_tmp._id': 1,
+          'StartingDateOfTheBusiness': {'$dateToString': {'format': "%Y-%m-%d", 'date': '$StartingDateOfTheBusiness'}},
           'PastBusinesses':
               {'$gt': ['$StartingDateOfTheBusiness',
                        {'$toDate': '$nip_tmp.DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej'}]
-               }
+               },
+          'JoinedDate': '$nip_tmp.DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej'
           }
      },
     {'$match': {'PastBusinesses': True}},
     {'$group':
-         {'_id': {'NIP': '$NIP'},
+         {'_id': {'NIP': '$NIP', 'Date': '$StartingDateOfTheBusiness'},
           'n': {'$sum': 1}
           }
      },
     {'$project':
          {'_id': 0,
           'NIP': '$_id.NIP',
+          'Date': '$_id.Date',
           'NoOfPastBusinesses': '$n'
           }
      }
-])
+], allowDiskUse=True)
 
 no_of_businesses_results = list(no_of_businesses_query)
-
-preprocessed_data = pd.DataFrame(query_result)
 no_of_businesses_data = pd.DataFrame(no_of_businesses_results)
 
-raw_data = pd.merge(preprocessed_data, no_of_businesses_data, how='left', on='NIP')
+preprocessed_data = pd.DataFrame(query_result)
+preprocessed_data['Date'] = preprocessed_data.StartingDateOfTheBusiness.dt.strftime('%Y-%m-%d')
+
+del no_of_businesses_results, no_of_businesses_query, query_result
+
+raw_data = pd.merge(preprocessed_data,
+                    no_of_businesses_data,
+                    how='left',
+                    left_on=['NIP', 'Date'],
+                    right_on=['NIP', 'Date'])
+
+del no_of_businesses_data, preprocessed_data
 
 raw_data.to_pickle('results/raw_data.pickle')
-
+preprocessed_data.to_pickle('results/raw_data_surv2010.pickle')
+preprocessed_data.to_feather('results/raw_data_surv2010.feather')

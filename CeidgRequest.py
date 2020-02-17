@@ -14,8 +14,8 @@ cl = Client(wsdl=url)
 
 # Defining requested time range of data --------------------------------------------------------------------------------
 
-start_date = date(2009, 1, 1)
-end_date = date(2009, 12, 31)
+start_date = date(2008, 1, 1)
+end_date = date(2008, 12, 31)
 delta = timedelta(weeks=4)
 
 results = []
@@ -30,17 +30,17 @@ while start_date < end_date:
     print('DateFrom: ' f'{start_date}', ', DateTo: ' f'{start_date + delta} passed!')
 
 
-with open('ceidg_ids_2009.pickle', 'wb') as file:
+with open('ceidg_ids_2008.pickle', 'wb') as file:
     file.write(pickle.dumps(results))
 
-ceidg_ids = open('ceidg_ids_2009.pickle', 'rb')
+ceidg_ids = open('ceidg_ids_2008.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
 j = 170000
 k = 180000
 
-while k <= 210000:
-    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[210000:221623], path=os.getcwd() + '/downloaded_nips/')
+while k <= 200000:
+    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[200000:209717], path=os.getcwd() + '/downloaded_nips/')
     j += 10000
     k += 10000
 
@@ -48,6 +48,8 @@ while k <= 210000:
 
 files = os.listdir('downloaded_nips')
 files.remove('.DS_Store')
+files.remove('tmp')
+
 
 for file in files:
     with open(os.path.join(os.path.abspath('downloaded_nips'), file)) as f:
@@ -55,13 +57,13 @@ for file in files:
         obj = json.loads(data)
 
         for i in range(len(obj)):
-            # print(i)
-            # print(obj[i].keys())
-            if 'IdentyfikatorWpisu' not in obj[i].keys():
+            if obj[i] is None:
+                pass
+            elif 'IdentyfikatorWpisu' not in obj[i].keys():
                 pass
             else:
                 obj[i]['_id'] = obj[i]['IdentyfikatorWpisu']
                 obj[i].pop('IdentyfikatorWpisu')
 
-    with open(os.path.join(os.path.abspath('downloaded_nips'), file), 'w') as f:
+    with open(os.path.join(os.path.abspath('downloaded_nips/tmp'), file), 'w') as f:
         json.dump(obj, f, indent=2)
