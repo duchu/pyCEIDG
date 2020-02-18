@@ -11,13 +11,17 @@ entries = db['entries']
 # TODO remove unused objects in order to clear memory
 # TODO Correct order of converting string to dates, romove duplicated conversion
 
+
 query_result = entries.aggregate([
-    {'$match': {'DanePodstawowe.NIP': '1180454558'}},
     {'$addFields':
          {'RealDateOfSuspension':
               {'$cond':
                    [{'$regexMatch':
-                         {'input': '$DaneDodatkowe.PodstawaPrawnaWykreslenia.Informacja',
+                         {'input': {'$cond':
+                                        [{'$isArray': '$DaneDodatkowe.PodstawaPrawnaWykreslenia.Informacja'},
+                                         'some string',
+                                         '$DaneDodatkowe.PodstawaPrawnaWykreslenia.Informacja']
+                                    },
                           'regex': '^art. 34 ust',
                           'options': 'i'
                           }
@@ -37,14 +41,15 @@ query_result = entries.aggregate([
           }
      },
     {'$addFields':
-         {'DateOfTerminationOrSuspension':
-             {'$ifNull': [
-              {'$cond': [{'$gt': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfSuspension']},
-                         '$RealDateOfSuspension',
-                         '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
-               }, '$DaneDodatkowe.DataWykresleniaWpisuZRejestru']}
-          }
-     },
+        {'DateOfTerminationOrSuspension':
+            {'$ifNull': [
+                {'$cond': [{'$gt': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfSuspension']},
+                           '$RealDateOfSuspension',
+                           '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
+                 }, '$DaneDodatkowe.DataWykresleniaWpisuZRejestru']
+            }
+        }
+    },
     {'$match': {
         '$or': [
             {'DaneDodatkowe.Status': 'Aktywny'},
@@ -52,7 +57,6 @@ query_result = entries.aggregate([
                                                                                   '$lte': '2018-11-01'
                                                                                   }
              },
-            {'DaneDodatkowe.DataWykresleniaWpisuZRejestru': {'$gte': '2017-11-01'}},
             {'DateOfTerminationOrSuspension': {'$gte': '2017-11-01'}}
         ]
     }
@@ -71,10 +75,6 @@ query_result = entries.aggregate([
         'TerminationDateOfTheBusiness': '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej',
         'DeletionDateFromTheRegister': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
         'DateOfTerminationOrSuspension': 1,
-        #     '$ifNull': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfSuspenison']
-        # },
-        'RealDateOfSuspension': 1,
-        # 'RealDateOfSuspensionOrTermination': 1,
         'MainAddressCounty': {'$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat'},
         'MainAddressVoivodeship': {
             '$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Wojewodztwo'
@@ -286,8 +286,8 @@ query_result = entries.aggregate([
           'Status': 1,
           'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
           'DateOfTerminationOrSuspension': {'$toDate': '$DateOfTerminationOrSuspension'},
-          'RealDateOfSuspension': 1,
-          'RealDateOfSuspensionOrTermination': 1,
+          # 'RealDateOfSuspension': 1,
+          # 'RealDateOfSuspensionOrTermination': 1,
           'StartDate': 1,
           'EndDate': 1,
           'MainAddressCounty': 1,
@@ -318,21 +318,18 @@ query_result = entries.aggregate([
           'NoOfUniquePKDClasses': 1
           }
      },
-    {'$limit': 100},
+    # {'$limit': 10000},
 
 ])
 
 query_result = list(query_result)
 
-# preprocessed_data = pd.DataFrame(query_result)
-# preprocessed_data['Date'] = preprocessed_data.StartingDateOfTheBusiness.dt.strftime('%Y-%m-%d')
+# TODO write statement which chekcs if 'preprocessed_tmp' collection exists in mongodb, if condition will true drop collection
 
-# comment block --------
 
-db['preprocessed_tmp'].insert_many(query_result)
+# db['preprocessed_tmp'].insert_many(query_result)
 nip_tmp = db['preprocessed_tmp']
 
-# del query_result
 
 no_of_businesses_query = nip_tmp.aggregate([
     # {'$match': {'NIP': '8511001795'}},
@@ -347,7 +344,7 @@ no_of_businesses_query = nip_tmp.aggregate([
          {'path': '$nip_tmp'}
      },
     {'$project':
-         {'_id': 1,
+         {'_id': 0,
           'NIP': 1,
           'StartingDateOfTheBusiness': {'$dateToString': {'format': "%Y-%m-%d", 'date': '$StartingDateOfTheBusiness'}},
           'PastBusinesses':
@@ -389,5 +386,4 @@ raw_data = pd.merge(preprocessed_data,
 del no_of_businesses_data, preprocessed_data
 
 raw_data.to_pickle('results/raw_data.pickle')
-preprocessed_data.to_pickle('results/raw_data_surv2010.pickle')
-preprocessed_data.to_feather('results/raw_data_surv2010.feather')
+
