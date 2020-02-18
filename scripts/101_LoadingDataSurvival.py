@@ -253,7 +253,8 @@ query_result = entries.aggregate([
           }
      },
     {'$project':
-         {'NIP': 1,
+         {'_id': 0,
+          'NIP': 1,
           'Status': 1,
           'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
           'DeletionDateFromTheRegister': 1,
@@ -272,9 +273,7 @@ query_result = entries.aggregate([
           'HasLicences': 1,
           'NoOfLicences': 1,
           'Sex': 1,
-          'Citizenship': 1,
           'HasPolishCitizenship': 1,
-          'NoOfCitizenships': 1,
           'ShareholderInOtherCompanies': 1,
           'PKDMainSection': 1,
           'PKDMainDivision': 1,
@@ -291,7 +290,9 @@ query_result = entries.aggregate([
 query_result = list(query_result)
 
 raw_data_surv = pd.DataFrame(query_result)
-raw_data_surv['YearOfStartingOfTheBusiness'] = raw_data_surv.StartingDateOfTheBusiness.dt.strftime('%Y')
-raw_data_surv.to_pickle('results/raw_data_surv.pickle')
-raw_data_surv.to_feather('results/raw_data_surv.feather')
 
+del query_result
+
+raw_data_surv['YearOfStartingOfTheBusiness'] = raw_data_surv.StartingDateOfTheBusiness.dt.strftime('%Y')
+
+raw_data_surv.to_feather('results/raw_data_surv.feather')
