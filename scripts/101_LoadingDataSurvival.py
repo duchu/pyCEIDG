@@ -11,10 +11,9 @@ entries = db['entries']
 # TODO remove unused objects in order to clear memory
 # TODO Correct order of converting string to dates, romove duplicated conversion
 
-
 query_result = entries.aggregate([
     {'$addFields':
-         {'RealDateOfSuspension':
+         {'RealDateOfTermination':
               {'$cond':
                    [{'$regexMatch':
                          {'input': {'$cond':
@@ -35,35 +34,23 @@ query_result = entries.aggregate([
                                }
                           }
                      },
-                    '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
+                    None]
                }
 
           }
      },
     {'$addFields':
-        {'DateOfTerminationOrSuspension':
+        {'DateOfTermination':
             {'$ifNull': [
-                {'$cond': [{'$gt': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfSuspension']},
-                           '$RealDateOfSuspension',
-                           '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
+                {'$cond': [{'$gt': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfTermination']},
+                           '$RealDateOfTermination',
+                           None]
                  }, '$DaneDodatkowe.DataWykresleniaWpisuZRejestru']
             }
         }
     },
-    {'$match': {
-        '$or': [
-            {'DaneDodatkowe.Status': 'Aktywny'},
-            {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$gte': '2017-11-01',
-                                                                                  '$lte': '2018-11-01'
-                                                                                  }
-             },
-            {'DateOfTerminationOrSuspension': {'$gte': '2017-11-01'}}
-        ]
-    }
-    },
-    {'$match': {'DanePodstawowe.NIP': {'$ne': None},
-                'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lt': '2018-11-01'}
-                }
+    {'$match': {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lte': '2011-01-01'},
+                'DanePodstawowe.NIP': {'$ne': None}}
      },
     {'$project': {
         '_id': 1,
@@ -74,7 +61,7 @@ query_result = entries.aggregate([
         'ResumptionDateOfTheBusiness': '$DaneDodatkowe.DataWznowieniaWykonywaniaDzialalnosciGospodarczej',
         'TerminationDateOfTheBusiness': '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej',
         'DeletionDateFromTheRegister': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
-        'DateOfTerminationOrSuspension': 1,
+        'DateOfTermination': 1,
         'MainAddressCounty': {'$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat'},
         'MainAddressVoivodeship': {
             '$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Wojewodztwo'
@@ -263,33 +250,14 @@ query_result = entries.aggregate([
           'PKDMainDivision': {'$arrayElemAt': ['$AllPKDDivisions', 0]},
           'PKDMainGroup': {'$arrayElemAt': ['$AllPKDGroups', 0]},
           'PKDMainClass': {'$arrayElemAt': ['$AllPKDClasses', 0]},
-          'StartDate': {'$toDate': {'$cond':
-                                        [{'$lt':
-                                              ['$StartingDateOfTheBusiness', '2017-11-01']
-                                          }, '2017-11-01', '$StartingDateOfTheBusiness']
-                                    }
-                        },
-          'EndDate': {'$toDate':
-              {'$cond':
-                  [{'$or': [
-                      {'$gt': ['$DateOfTerminationOrSuspension', '2018-11-01']},
-                      {'$eq': ['$DateOfTerminationOrSuspension', None]}]
-                  },
-                      '2018-11-01',
-                      '$DateOfTerminationOrSuspension']
-              }
-          }
           }
      },
     {'$project':
          {'NIP': 1,
           'Status': 1,
           'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
-          'DateOfTerminationOrSuspension': {'$toDate': '$DateOfTerminationOrSuspension'},
-          # 'RealDateOfSuspension': 1,
-          # 'RealDateOfSuspensionOrTermination': 1,
-          'StartDate': 1,
-          'EndDate': 1,
+          'DeletionDateFromTheRegister': 1,
+          'DateOfTermination': 1,
           'MainAddressCounty': 1,
           'MainAddressVoivodeship': 1,
           'CorrespondenceAddressCounty': 1,
@@ -318,72 +286,12 @@ query_result = entries.aggregate([
           'NoOfUniquePKDClasses': 1
           }
      },
-    # {'$limit': 10000},
-
 ])
 
 query_result = list(query_result)
 
-# TODO write statement which chekcs if 'preprocessed_tmp' collection exists in mongodb, if condition will true drop collection
-
-
-# db['preprocessed_tmp'].insert_many(query_result)
-nip_tmp = db['preprocessed_tmp']
-
-
-no_of_businesses_query = nip_tmp.aggregate([
-    # {'$match': {'NIP': '8511001795'}},
-    {'$lookup':
-         {'from': 'entries',
-          'localField': 'NIP',
-          'foreignField': 'DanePodstawowe.NIP',
-          'as': 'nip_tmp'
-          }
-     },
-    {'$unwind':
-         {'path': '$nip_tmp'}
-     },
-    {'$project':
-         {'_id': 0,
-          'NIP': 1,
-          'StartingDateOfTheBusiness': {'$dateToString': {'format': "%Y-%m-%d", 'date': '$StartingDateOfTheBusiness'}},
-          'PastBusinesses':
-              {'$gt': ['$StartingDateOfTheBusiness',
-                       {'$toDate': '$nip_tmp.DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej'}]
-               },
-          'JoinedDate': '$nip_tmp.DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej'
-          }
-     },
-    {'$match': {'PastBusinesses': True}},
-    {'$group':
-         {'_id': {'NIP': '$NIP', 'Date': '$StartingDateOfTheBusiness'},
-          'n': {'$sum': 1}
-          }
-     },
-    {'$project':
-         {'_id': 0,
-          'NIP': '$_id.NIP',
-          'Date': '$_id.Date',
-          'NoOfPastBusinesses': '$n'
-          }
-     }
-], allowDiskUse=True)
-
-no_of_businesses_results = list(no_of_businesses_query)
-no_of_businesses_data = pd.DataFrame(no_of_businesses_results)
-
-preprocessed_data = pd.DataFrame(query_result)
-preprocessed_data['Date'] = preprocessed_data.StartingDateOfTheBusiness.dt.strftime('%Y-%m-%d')
-
-del no_of_businesses_results, no_of_businesses_query, query_result
-
-raw_data = pd.merge(preprocessed_data,
-                    no_of_businesses_data,
-                    how='left',
-                    left_on=['NIP', 'Date'],
-                    right_on=['NIP', 'Date'])
-
-del no_of_businesses_data, preprocessed_data
-
-raw_data.to_pickle('results/raw_data.pickle')
+raw_data_surv = pd.DataFrame(query_result)
+raw_data_surv['YearOfStartingOfTheBusiness'] = raw_data_surv.StartingDateOfTheBusiness.dt.strftime('%Y')
+raw_data_surv.to_pickle('results/raw_data_surv.pickle')
+raw_data_surv.to_feather('results/raw_data_surv.feather')
 

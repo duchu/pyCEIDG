@@ -1,14 +1,15 @@
+
 import xmltodict
 import json
 from datetime import datetime
 from zeep import Client
 from os import getcwd
+from random import random, seed
 
 
 # TODO Make documentation of fucntions
 
-def _ask_ceidg(password, key, values, path):
-
+def _ask_ceidg (password, key, values, path):
     results = []
     requested_item = {'AuthToken': password, str(key): values}
     collected_xml = client.service.GetMigrationDataExtendedAddressInfo(**requested_item)
@@ -21,8 +22,7 @@ def _ask_ceidg(password, key, values, path):
         return result
 
 
-def get_ceidg_data(password, key, values, path=getcwd()):
-
+def get_ceidg_data (password, key, values, path=getcwd()):
     global client
     client = Client(wsdl='https://datastore.ceidg.gov.pl/CEIDG.DataStore/services/NewDataStoreProvider.svc?wsdl')
 
@@ -38,3 +38,13 @@ def get_ceidg_data(password, key, values, path=getcwd()):
 
     with open(path + '/ceidg_' + f'{now}' + '.json', 'w') as file:
         json.dump(results, file, indent=2)
+
+
+def random_date (date_start, date_end, set_seed=None):
+    seed(set_seed)
+    sampled_date = date_start + (date_end - date_start) * random()
+    return sampled_date
+
+
+def month_diff (date_1, date_2):
+    return 12 * (date_1.dt.year - date_2.dt.year) + (date_1.dt.month - date_2.dt.month)

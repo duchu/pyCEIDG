@@ -5,7 +5,7 @@ import pickle
 import config
 import json
 from datetime import date, timedelta
-from data import ceidg_api as api
+from funs import functions as api
 import os
 
 password = config.password
@@ -14,9 +14,9 @@ cl = Client(wsdl=url)
 
 # Defining requested time range of data --------------------------------------------------------------------------------
 
-start_date = date(2012, 6, 1)
-end_date = date(2018, 11, 1)
-delta = timedelta(weeks=10)
+start_date = date(2007, 1, 1)
+end_date = date(2007, 12, 31)
+delta = timedelta(weeks=4)
 
 results = []
 
@@ -29,16 +29,17 @@ while start_date < end_date:
     start_date += delta
     print('DateFrom: ' f'{start_date}', ', DateTo: ' f'{start_date + delta} passed!')
 
-# with open('ceidg_ids.pickle', 'wb') as file:
+
+# with open('ceidg_ids_2007.pickle', 'wb') as file:
 #     file.write(pickle.dumps(results))
 
-ceidg_ids = open('ceidg_ids.pickle', 'rb')
+ceidg_ids = open('ceidg_ids_2007.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
-j = 1800000
-k = 1810000
+j = 20000
+k = 30000
 
-while k <= 2000000:
+while k <= 60000:
     api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[j:k], path=os.getcwd() + '/downloaded_nips/')
     j += 10000
     k += 10000
@@ -47,6 +48,8 @@ while k <= 2000000:
 
 files = os.listdir('downloaded_nips')
 files.remove('.DS_Store')
+files.remove('tmp')
+
 
 for file in files:
     with open(os.path.join(os.path.abspath('downloaded_nips'), file)) as f:
@@ -54,11 +57,13 @@ for file in files:
         obj = json.loads(data)
 
         for i in range(len(obj)):
-            if 'IdentyfikatorWpisu' not in obj[i].keys():
+            if obj[i] is None:
+                pass
+            elif 'IdentyfikatorWpisu' not in obj[i].keys():
                 pass
             else:
                 obj[i]['_id'] = obj[i]['IdentyfikatorWpisu']
                 obj[i].pop('IdentyfikatorWpisu')
 
-    with open(os.path.join(os.path.abspath('downloaded_nips'), file), 'w') as f:
+    with open(os.path.join(os.path.abspath('downloaded_nips/tmp'), file), 'w') as f:
         json.dump(obj, f, indent=2)
