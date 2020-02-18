@@ -6,7 +6,7 @@ from funs import functions as f
 
 raw_data = pd.read_pickle('results/raw_data.pickle')
 
-sampled_raw_data = raw_data.sample(40000)
+sampled_raw_data = raw_data.sample(60000)
 
 del raw_data
 
@@ -32,13 +32,6 @@ sampled_raw_data['DurationOfExistenceInMonths'] = f.month_diff(sampled_raw_data.
 sampled_raw_data['DurationOfExistenceInMonths'] = sampled_raw_data.DurationOfExistenceInMonths.astype(int)
 
 # - Month of Starting of the Business
-
-tmp_df = sampled_raw_data.loc[:,
-         ['NIP',
-          'StartDate',
-          'EndDate',
-          'DurationOfExistenceInMonths',
-          'StartingDateOfTheBusiness']].sort_values(by='DurationOfExistenceInMonths').head()
 
 sampled_raw_data['MonthOfStartingOfTheBusiness'] = sampled_raw_data.StartingDateOfTheBusiness.dt.month_name()
 
