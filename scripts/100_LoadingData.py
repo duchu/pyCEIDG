@@ -8,7 +8,6 @@ entries = db['entries']
 
 # TODO Improve Sex feature by take nationality into acount
 # TODO Find out what means last letter in 'DaneDodatkowe.KodyPKD' field
-# TODO remove unused objects in order to clear memory
 # TODO Correct order of converting string to dates, romove duplicated conversion
 
 
@@ -282,7 +281,8 @@ query_result = entries.aggregate([
           }
      },
     {'$project':
-         {'NIP': 1,
+         {'_id': 0,
+          'NIP': 1,
           'Status': 1,
           'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
           'DateOfTerminationOrSuspension': {'$toDate': '$DateOfTerminationOrSuspension'},
@@ -322,17 +322,22 @@ query_result = entries.aggregate([
 
 ])
 
-query_result = list(query_result)
 
-# TODO write statement which chekcs if 'preprocessed_tmp' collection exists in mongodb, if condition will true drop collection
+# Creating helper temporary collection and indexes on NIP column -------------------------------------------------------------------
 
+if 'preprocessed_tmp' in db.list_collection_names():
+    db.drop_collection('preprocessed_tmp')
+    db['preprocessed_tmp'].insert_many(list(query_result))
+else:
+    db['preprocessed_tmp'].insert_many(list(query_result))
 
-# db['preprocessed_tmp'].insert_many(query_result)
 nip_tmp = db['preprocessed_tmp']
+nip_tmp.create_index([('NIP', 1)])
 
+
+# Query for counting of number of terminated businesses by each NIP in the past ----------------------------------------
 
 no_of_businesses_query = nip_tmp.aggregate([
-    # {'$match': {'NIP': '8511001795'}},
     {'$lookup':
          {'from': 'entries',
           'localField': 'NIP',
@@ -368,14 +373,12 @@ no_of_businesses_query = nip_tmp.aggregate([
           }
      }
 ], allowDiskUse=True)
+no_of_businesses_data = pd.DataFrame(list(no_of_businesses_query))
 
-no_of_businesses_results = list(no_of_businesses_query)
-no_of_businesses_data = pd.DataFrame(no_of_businesses_results)
-
-preprocessed_data = pd.DataFrame(query_result)
+preprocessed_data = pd.DataFrame(list(query_result))
 preprocessed_data['Date'] = preprocessed_data.StartingDateOfTheBusiness.dt.strftime('%Y-%m-%d')
 
-del no_of_businesses_results, no_of_businesses_query, query_result
+del no_of_businesses_query, query_result
 
 raw_data = pd.merge(preprocessed_data,
                     no_of_businesses_data,
@@ -385,5 +388,4 @@ raw_data = pd.merge(preprocessed_data,
 
 del no_of_businesses_data, preprocessed_data
 
-raw_data.to_pickle('results/raw_data.pickle')
-
+raw_data.to_feather('results/raw_data.pickle')
