@@ -4,13 +4,11 @@ from datetime import timedelta
 from config import password
 from funs import functions as f
 
-raw_data = pd.read_pickle('results/raw_data.pickle')
+raw_data = pd.read_feather('results/raw_data.pickle')
 
 sampled_raw_data = raw_data.sample(60000)
 
 del raw_data
-
-# TODO Remove records with NIP as NaN
 
 # -- Imputing missing values -------------------------------------------------------------------------------------------
 
@@ -35,7 +33,7 @@ sampled_raw_data['DurationOfExistenceInMonths'] = sampled_raw_data.DurationOfExi
 
 sampled_raw_data['MonthOfStartingOfTheBusiness'] = sampled_raw_data.StartingDateOfTheBusiness.dt.month_name()
 
-cols_to_drop = ['Status', 'StartDate', 'EndDate']
+cols_to_drop = ['Status', 'StartDate', 'EndDate', 'Date']
 
 #  -- Target varibale
 
@@ -48,5 +46,3 @@ sampled_raw_data = sampled_raw_data.reset_index()
 # -- save DataFrame to files -------------------------------------------------------------------------------------------
 
 sampled_raw_data.to_feather('results/ceidg_data_sample.feather')
-sampled_raw_data.to_pickle('results/ceidg_data_sample.pickle')
-

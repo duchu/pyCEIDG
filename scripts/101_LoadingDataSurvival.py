@@ -8,7 +8,6 @@ entries = db['entries']
 
 # TODO Improve Sex feature by take nationality into acount
 # TODO Find out what means last letter in 'DaneDodatkowe.KodyPKD' field
-# TODO remove unused objects in order to clear memory
 # TODO Correct order of converting string to dates, romove duplicated conversion
 
 query_result = entries.aggregate([
@@ -50,7 +49,8 @@ query_result = entries.aggregate([
         }
     },
     {'$match': {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lte': '2011-01-01'},
-                'DanePodstawowe.NIP': {'$ne': None}}
+                'DanePodstawowe.NIP': {'$ne': None}
+                }
      },
     {'$project': {
         '_id': 1,
