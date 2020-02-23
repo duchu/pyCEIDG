@@ -14,8 +14,8 @@ cl = Client(wsdl=url)
 
 # Defining requested time range of data --------------------------------------------------------------------------------
 
-start_date = date(2006, 1, 1)
-end_date = date(2006, 12, 31)
+start_date = date(2005, 1, 1)
+end_date = date(2005, 12, 31)
 delta = timedelta(weeks=4)
 
 results = []
@@ -26,21 +26,21 @@ while start_date < end_date:
     res_dict = xmltodict.parse(response)
     res_dict = res_dict['WynikWyszukiwania']['IdentyfikatorWpisu']
     results = results + res_dict
-    start_date += delta
     print('DateFrom: ' f'{start_date}', ', DateTo: ' f'{start_date + delta} passed!')
+    start_date += delta
 
 
-with open('ceidg_ids_2006.pickle', 'wb') as file:
-    file.write(pickle.dumps(results))
+# with open('ceidg_ids_2005.pickle', 'wb') as file:
+#     file.write(pickle.dumps(results))
 
-ceidg_ids = open('ceidg_ids_2006.pickle', 'rb')
+ceidg_ids = open('ceidg_ids_2005.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
-j = 0
-k = 10000
+j = 100000
+k = 110000
 
-while k <= 30000:
-    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[j:k], path=os.getcwd() + '/downloaded_nips/')
+while k <= 130000:
+    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[130000:134365], path=os.getcwd() + '/downloaded_nips/')
     j += 10000
     k += 10000
 

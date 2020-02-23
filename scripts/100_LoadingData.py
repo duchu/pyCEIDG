@@ -10,8 +10,15 @@ entries = db['entries']
 # TODO Find out what means last letter in 'DaneDodatkowe.KodyPKD' field
 # TODO Correct order of converting string to dates, romove duplicated conversion
 
-
 query_result = entries.aggregate([
+    {'$addFields':
+         {'RealDateOfTermination':
+              {'$ifNull':
+                   ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
+                    '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej']
+               }
+          }
+     },
     {'$addFields':
          {'RealDateOfSuspension':
               {'$cond':
@@ -36,19 +43,18 @@ query_result = entries.aggregate([
                      },
                     '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
                }
-
           }
      },
     {'$addFields':
-        {'DateOfTerminationOrSuspension':
-            {'$ifNull': [
-                {'$cond': [{'$gt': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfSuspension']},
-                           '$RealDateOfSuspension',
-                           '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
-                 }, '$DaneDodatkowe.DataWykresleniaWpisuZRejestru']
-            }
-        }
-    },
+         {'DateOfTerminationOrSuspension':
+              {'$ifNull':
+                   [{'$cond': [{'$gt': ['$RealDateOfTermination', '$RealDateOfSuspension']},
+                               '$RealDateOfSuspension',
+                               '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
+                     }, '$RealDateOfTermination']
+               }
+          }
+     },
     {'$match': {
         '$or': [
             {'DaneDodatkowe.Status': 'Aktywny'},
@@ -56,7 +62,7 @@ query_result = entries.aggregate([
                                                                                   '$lte': '2018-11-01'
                                                                                   }
              },
-            {'DateOfTerminationOrSuspension': {'$gte': '2017-11-01'}}
+            {'DateOfTerminationOrSuspension': {'$gt': '2017-11-01'}}
         ]
     }
     },
@@ -64,15 +70,18 @@ query_result = entries.aggregate([
                 'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lt': '2018-11-01'}
                 }
      },
+    {'$match':
+         {'$expr':
+              {'$ne': ['$DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej',
+                       '$DateOfTerminationOrSuspension']
+               }
+          }
+     },
     {'$project': {
         '_id': 1,
         'NIP': '$DanePodstawowe.NIP',
         'Status': '$DaneDodatkowe.Status',
         'StartingDateOfTheBusiness': '$DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej',
-        'SuspensionDateOfTheBusiness': '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej',
-        'ResumptionDateOfTheBusiness': '$DaneDodatkowe.DataWznowieniaWykonywaniaDzialalnosciGospodarczej',
-        'TerminationDateOfTheBusiness': '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej',
-        'DeletionDateFromTheRegister': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
         'DateOfTerminationOrSuspension': 1,
         'MainAddressCounty': {'$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat'},
         'MainAddressVoivodeship': {
@@ -286,8 +295,6 @@ query_result = entries.aggregate([
           'Status': 1,
           'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
           'DateOfTerminationOrSuspension': {'$toDate': '$DateOfTerminationOrSuspension'},
-          # 'RealDateOfSuspension': 1,
-          # 'RealDateOfSuspensionOrTermination': 1,
           'StartDate': 1,
           'EndDate': 1,
           'MainAddressCounty': 1,
@@ -318,22 +325,22 @@ query_result = entries.aggregate([
           'NoOfUniquePKDClasses': 1
           }
      },
-    # {'$limit': 10000},
+    {'$limit': 10000},
 
 ])
 
+query_result = list(query_result)
 
 # Creating helper temporary collection and indexes on NIP column -------------------------------------------------------------------
 
 if 'preprocessed_tmp' in db.list_collection_names():
     db.drop_collection('preprocessed_tmp')
-    db['preprocessed_tmp'].insert_many(list(query_result))
+    db['preprocessed_tmp'].insert_many(query_result)
 else:
-    db['preprocessed_tmp'].insert_many(list(query_result))
+    db['preprocessed_tmp'].insert_many(query_result)
 
 nip_tmp = db['preprocessed_tmp']
 nip_tmp.create_index([('NIP', 1)])
-
 
 # Query for counting of number of terminated businesses by each NIP in the past ----------------------------------------
 
@@ -375,7 +382,7 @@ no_of_businesses_query = nip_tmp.aggregate([
 ], allowDiskUse=True)
 no_of_businesses_data = pd.DataFrame(list(no_of_businesses_query))
 
-preprocessed_data = pd.DataFrame(list(query_result))
+preprocessed_data = pd.DataFrame(query_result)
 preprocessed_data['Date'] = preprocessed_data.StartingDateOfTheBusiness.dt.strftime('%Y-%m-%d')
 
 del no_of_businesses_query, query_result
@@ -386,6 +393,8 @@ raw_data = pd.merge(preprocessed_data,
                     left_on=['NIP', 'Date'],
                     right_on=['NIP', 'Date'])
 
+raw_data = raw_data.drop(columns='_id')
+
 del no_of_businesses_data, preprocessed_data
 
-raw_data.to_feather('results/raw_data.pickle')
+raw_data.to_feather('results/raw_data.feather')

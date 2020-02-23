@@ -39,7 +39,7 @@ query_result = entries.aggregate([
           }
      },
     {'$addFields':
-        {'DateOfTermination':
+        {'DateOfTerminationOrSuspension':
             {'$ifNull': [
                 {'$cond': [{'$gt': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfTermination']},
                            '$RealDateOfTermination',
@@ -267,7 +267,6 @@ query_result = entries.aggregate([
           'NoOfAdditionalPlaceOfTheBusiness': 1,
           'IsPhoneNo': 1,
           'IsEmail': 1,
-          'IsFax': 1,
           'IsWWW': 1,
           'CommunityProperty': 1,
           'HasLicences': 1,
@@ -287,9 +286,7 @@ query_result = entries.aggregate([
      },
 ])
 
-query_result = list(query_result)
-
-raw_data_surv = pd.DataFrame(query_result)
+raw_data_surv = pd.DataFrame(list(query_result))
 
 del query_result
 
