@@ -5,47 +5,52 @@ from datetime import timedelta
 from config import password
 from funs import functions as f
 
-raw_data = pd.read_feather('results/raw_data.feather')
+preprocessed_data = pd.read_feather('results/raw_data.feather')
 
-sampled_raw_data = raw_data.sample(100000)
+# preprocessed_data = raw_data.sample(100000)
 
-del raw_data
+# del raw_data
 
 # -- Imputing missing values -------------------------------------------------------------------------------------------
 
-sampled_raw_data['NoOfPastBusinesses'] = sampled_raw_data.NoOfPastBusinesses.fillna(0).astype(int)
+preprocessed_data['NoOfPastBusinesses'] = preprocessed_data.NoOfPastBusinesses.fillna(0).astype(int)
 
 
 # -- Creating new variables from existing ones -------------------------------------------------------------------------
 
 # - Duration of Existence
 
-sampled_raw_data['RandomDate'] = sampled_raw_data.apply(lambda x: f.random_date(x['StartDate'], x['EndDate']), axis=1)
+# TODO set random seed
+
+preprocessed_data['RandomDate'] = preprocessed_data.apply(lambda x: f.random_date(x['StartDate'], x['EndDate']), axis=1)
 
 delta = timedelta(days=365)
-sampled_raw_data['RandomDatePlus12M'] = sampled_raw_data.RandomDate + delta
+preprocessed_data['RandomDatePlus12M'] = preprocessed_data.RandomDate + delta
 
-sampled_raw_data['DurationOfExistenceInMonths'] = f.month_diff(sampled_raw_data.RandomDate,
-                                                               sampled_raw_data.StartingDateOfTheBusiness)
-sampled_raw_data['DurationOfExistenceInMonths'] = sampled_raw_data.DurationOfExistenceInMonths.astype(int)
+preprocessed_data['DurationOfExistenceInMonths'] = f.month_diff(preprocessed_data.RandomDate,
+                                                               preprocessed_data.StartingDateOfTheBusiness)
+preprocessed_data['DurationOfExistenceInMonths'] = preprocessed_data.DurationOfExistenceInMonths.astype(int)
 
-sampled_raw_data['RandomDate'] = sampled_raw_data.RandomDate.dt.strftime('%Y-%m-%d')
+# - Month and Quarter based on  Starting of the Business and Date of Scoring
 
-# - Month and Quarter of Starting of the Business
+preprocessed_data['MonthOfStartingOfTheBusiness'] = preprocessed_data.StartingDateOfTheBusiness.dt.month_name()
+preprocessed_data['QuarterOfStartingOfTheBusiness'] = preprocessed_data.StartingDateOfTheBusiness.dt.quarter.astype(object)
 
-sampled_raw_data['MonthOfStartingOfTheBusiness'] = sampled_raw_data.StartingDateOfTheBusiness.dt.month_name()
-sampled_raw_data['QuarterOfStartingOfTheBusiness'] = sampled_raw_data.StartingDateOfTheBusiness.dt.quarter.astype(object)
+preprocessed_data['MonthOfRandomDate'] = preprocessed_data.RandomDate.dt.month_name()
+preprocessed_data['QuarterOfRandomDate'] = preprocessed_data.RandomDate.dt.quarter.astype(object)
 
-cols_to_drop = ['Status', 'StartDate', 'EndDate', 'Date', 'StartingDateOfTheBusiness', 'RandomDatePlus12M']
+preprocessed_data['RandomDate'] = preprocessed_data.RandomDate.dt.strftime('%Y-%m-%d')
 
 #  -- Target varibale
 
-sampled_raw_data['Target'] = sampled_raw_data.RandomDatePlus12M > sampled_raw_data.DateOfTerminationOrSuspension
-sampled_raw_data['Target'] = sampled_raw_data.Target.astype(int)
+preprocessed_data['Target'] = preprocessed_data.RandomDatePlus12M > preprocessed_data.DateOfTerminationOrSuspension
+preprocessed_data['Target'] = preprocessed_data.Target.astype(bool)
 
-sampled_raw_data = sampled_raw_data.drop(columns=cols_to_drop)
-sampled_raw_data = sampled_raw_data.reset_index()
+cols_to_drop = ['Status', 'StartDate', 'EndDate', 'StartingDateOfTheBusiness', 'RandomDatePlus12M', 'Status']
+preprocessed_data = preprocessed_data.drop(columns=cols_to_drop)
+
+preprocessed_data = preprocessed_data.reset_index()
 
 # -- save DataFrame to files -------------------------------------------------------------------------------------------
 
-sampled_raw_data.to_feather('results/ceidg_data_sample.feather')
+preprocessed_data.to_feather('results/ceidg_data.feather')

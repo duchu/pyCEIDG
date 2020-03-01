@@ -11,8 +11,17 @@ entries = db['entries']
 # TODO Correct order of converting string to dates, romove duplicated conversion
 
 query_result = entries.aggregate([
+    # {'$match': {'DanePodstawowe.NIP': '6191337936'}},
     {'$addFields':
          {'RealDateOfTermination':
+              {'$ifNull':
+                   ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
+                    '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej']
+               }
+          }
+     },
+    {'$addFields':
+         {'RealDateOfSuspension':
               {'$cond':
                    [{'$regexMatch':
                          {'input': {'$cond':
@@ -39,28 +48,32 @@ query_result = entries.aggregate([
           }
      },
     {'$addFields':
-        {'DateOfTerminationOrSuspension':
+        {'DateOfTermination':
             {'$ifNull': [
                 {'$cond': [{'$gt': ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru', '$RealDateOfTermination']},
                            '$RealDateOfTermination',
                            None]
-                 }, '$DaneDodatkowe.DataWykresleniaWpisuZRejestru']
+                 }, '$RealDateOfTermination']
             }
         }
     },
-    {'$match': {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lte': '2011-01-01'},
+    {'$match': {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej':
+                    {'$gte': '2010-01-01', '$lte': '2015-01-01'},
                 'DanePodstawowe.NIP': {'$ne': None}
                 }
+     },
+    {'$match':
+         {'$expr':
+              {'$ne': ['$DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej',
+                       '$DateOfTermination']
+               }
+          }
      },
     {'$project': {
         '_id': 1,
         'NIP': '$DanePodstawowe.NIP',
         'Status': '$DaneDodatkowe.Status',
         'StartingDateOfTheBusiness': '$DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej',
-        'SuspensionDateOfTheBusiness': '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej',
-        'ResumptionDateOfTheBusiness': '$DaneDodatkowe.DataWznowieniaWykonywaniaDzialalnosciGospodarczej',
-        'TerminationDateOfTheBusiness': '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej',
-        'DeletionDateFromTheRegister': '$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
         'DateOfTermination': 1,
         'MainAddressCounty': {'$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Powiat'},
         'MainAddressVoivodeship': {
@@ -87,10 +100,10 @@ query_result = entries.aggregate([
 
                   }
              },
-        'IsPhoneNo': {'$cond': [{'$ne': ['$DaneKontaktowe.Telefon', None]}, 1, 0]},
-        'IsEmail': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresPocztyElektronicznej', None]}, 1, 0]},
-        'IsFax': {'$cond': [{'$ne': ['$DaneKontaktowe.Faks', None]}, 1, 0]},
-        'IsWWW': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresStronyInternetowej', None]}, 1, 0]},
+        'IsPhoneNo': {'$ne': ['$DaneKontaktowe.Telefon', None]},
+        'IsEmail': {'$ne': ['$DaneKontaktowe.AdresPocztyElektronicznej', None]},
+        'IsFax': {'$ne': ['$DaneKontaktowe.Faks', None]},
+        'IsWWW': {'$ne': ['$DaneKontaktowe.AdresStronyInternetowej', None]},
         'CommunityProperty':
             {'$cond':
                  [{'$regexMatch':
@@ -99,7 +112,7 @@ query_result = entries.aggregate([
                   'ustała',
                   '$DaneDodatkowe.MalzenskaWspolnoscMajatkowa']
              },
-        'HasLicences': {'$cond': [{'$gt': ['$Uprawnienia', None]}, 1, 0]},
+        'HasLicences': {'$gt': ['$Uprawnienia', None]},
         'NoOfLicences':
             {'$size':
                  {'$ifNull':
@@ -113,19 +126,15 @@ query_result = entries.aggregate([
             '$cond': [{'$regexMatch': {'input': '$DanePodstawowe.Imie', 'regex': 'a$', 'options': 'i'}}, 'F', 'M']
         },
         'Citizenship': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
-        'HasPolishCitizenship': {
-            '$cond': [{'$regexMatch': {'input': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
-                                       'regex': 'Polska',
-                                       'options': 'i'
-                                       }
-                       }, 1, 0]
+        'HasPolishCitizenship': {'$regexMatch': {'input': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
+                                                 'regex': 'Polska',
+                                                 'options': 'i'
+                                                 }
         },
         'NoOfCitizenships': {'$size': {
-            '$ifNull': [{'$split': ['$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw', ', ']}, []]
-        }
+            '$ifNull': [{'$split': ['$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw', ', ']}, []]}
         },
-        'ShareholderInOtherCompanies':
-            {'$cond': [{'$ne': ['$SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca', None]}, 1, 0]},
+        'ShareholderInOtherCompanies': {'$ne': ['$SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca', None]},
         'KodyPKD': '$DaneDodatkowe.KodyPKD',
         'AllPKDCodes': {'$split': ['$DaneDodatkowe.KodyPKD', ',']},
         'AllPKDDivisions': {
@@ -257,7 +266,6 @@ query_result = entries.aggregate([
           'NIP': 1,
           'Status': 1,
           'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
-          'DeletionDateFromTheRegister': 1,
           'DateOfTermination': 1,
           'MainAddressCounty': 1,
           'MainAddressVoivodeship': 1,
@@ -284,12 +292,13 @@ query_result = entries.aggregate([
           'NoOfUniquePKDClasses': 1
           }
      },
+    # {'$limit': 100}
 ])
 
 raw_data_surv = pd.DataFrame(list(query_result))
 
 del query_result
 
-raw_data_surv['YearOfStartingOfTheBusiness'] = raw_data_surv.StartingDateOfTheBusiness.dt.strftime('%Y')
+raw_data_surv['YearOfStartingOfTheBusiness'] = raw_data_surv.StartingDateOfTheBusiness.dt.strftime('%Y').astype(int)
 
 raw_data_surv.to_feather('results/raw_data_surv.feather')
