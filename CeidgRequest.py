@@ -30,10 +30,10 @@ while start_date < end_date:
     start_date += delta
 
 
-with open('ceidg_ids_1991.pickle', 'wb') as file:
+with open('data/ceidg_ids_1991.pickle', 'wb') as file:
     file.write(pickle.dumps(results))
 
-ceidg_ids = open('ceidg_ids_1995.pickle', 'rb')
+ceidg_ids = open('data/ceidg_ids_1995.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
 j = 40000
