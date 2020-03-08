@@ -7,8 +7,8 @@ db = myclient['ceidg']
 entries = db['entries']
 
 # TODO Improve Sex feature by take nationality into acount
-# TODO Find out what means last letter in 'DaneDodatkowe.KodyPKD' field
 # TODO Correct order of converting string to dates, romove duplicated conversion
+
 
 query_result = entries.aggregate([
     {'$addFields':
@@ -16,6 +16,17 @@ query_result = entries.aggregate([
               {'$ifNull':
                    ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
                     '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej']
+               },
+          'DeletedPESEL':
+              {'$regexMatch':
+                   {'input': {'$cond':
+                                  [{'$isArray': '$DaneDodatkowe.PodstawaPrawnaWykreslenia.Informacja'},
+                                   'some string',
+                                   '$DaneDodatkowe.PodstawaPrawnaWykreslenia.Informacja']
+                              },
+                    'regex': '^art. 61',
+                    'options': 'i'
+                    }
                }
           }
      },
@@ -42,7 +53,7 @@ query_result = entries.aggregate([
                           }
                      },
                     '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
-               }
+               },
           }
      },
     {'$addFields':
@@ -67,7 +78,8 @@ query_result = entries.aggregate([
     }
     },
     {'$match': {'DanePodstawowe.NIP': {'$ne': None},
-                'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lt': '2018-11-01'}
+                'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lt': '2018-11-01'},
+                'DeletedPESEL': False
                 }
      },
     {'$match':
@@ -108,10 +120,10 @@ query_result = entries.aggregate([
 
                   }
              },
-        'IsPhoneNo': {'$cond': [{'$ne': ['$DaneKontaktowe.Telefon', None]}, 1, 0]},
-        'IsEmail': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresPocztyElektronicznej', None]}, 1, 0]},
-        'IsFax': {'$cond': [{'$ne': ['$DaneKontaktowe.Faks', None]}, 1, 0]},
-        'IsWWW': {'$cond': [{'$ne': ['$DaneKontaktowe.AdresStronyInternetowej', None]}, 1, 0]},
+        'IsPhoneNo': {'$ne': ['$DaneKontaktowe.Telefon', None]},
+        'IsEmail': {'$ne': ['$DaneKontaktowe.AdresPocztyElektronicznej', None]},
+        'IsFax': {'$ne': ['$DaneKontaktowe.Faks', None]},
+        'IsWWW': {'$ne': ['$DaneKontaktowe.AdresStronyInternetowej', None]},
         'CommunityProperty':
             {'$cond':
                  [{'$regexMatch':
@@ -120,7 +132,7 @@ query_result = entries.aggregate([
                   'ustała',
                   '$DaneDodatkowe.MalzenskaWspolnoscMajatkowa']
              },
-        'HasLicences': {'$cond': [{'$gt': ['$Uprawnienia', None]}, 1, 0]},
+        'HasLicences': {'$gt': ['$Uprawnienia', None]},
         'NoOfLicences':
             {'$size':
                  {'$ifNull':
@@ -134,19 +146,16 @@ query_result = entries.aggregate([
             '$cond': [{'$regexMatch': {'input': '$DanePodstawowe.Imie', 'regex': 'a$', 'options': 'i'}}, 'F', 'M']
         },
         'Citizenship': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
-        'HasPolishCitizenship': {
-            '$cond': [{'$regexMatch': {'input': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
-                                       'regex': 'Polska',
-                                       'options': 'i'
-                                       }
-                       }, 1, 0]
-        },
+        'HasPolishCitizenship': {'$regexMatch': {'input': '$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw',
+                                                 'regex': 'Polska',
+                                                 'options': 'i'
+                                                 }
+                                 },
         'NoOfCitizenships': {'$size': {
             '$ifNull': [{'$split': ['$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw', ', ']}, []]
         }
         },
-        'ShareholderInOtherCompanies':
-            {'$cond': [{'$ne': ['$SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca', None]}, 1, 0]},
+        'ShareholderInOtherCompanies': {'$ne': ['$SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca', None]},
         'KodyPKD': '$DaneDodatkowe.KodyPKD',
         'AllPKDCodes': {'$split': ['$DaneDodatkowe.KodyPKD', ',']},
         'AllPKDDivisions': {
@@ -325,13 +334,13 @@ query_result = entries.aggregate([
           'NoOfUniquePKDClasses': 1
           }
      },
-    {'$limit': 10000},
+    # {'$limit': 10000},
 
 ])
 
 query_result = list(query_result)
 
-# Creating helper temporary collection and indexes on NIP column -------------------------------------------------------------------
+# Creating helper temporary collection and indexes on NIP column -------------------------------------------------------
 
 if 'preprocessed_tmp' in db.list_collection_names():
     db.drop_collection('preprocessed_tmp')
@@ -393,7 +402,7 @@ raw_data = pd.merge(preprocessed_data,
                     left_on=['NIP', 'Date'],
                     right_on=['NIP', 'Date'])
 
-raw_data = raw_data.drop(columns='_id')
+raw_data = raw_data.drop(columns=['_id', 'Date'])
 
 del no_of_businesses_data, preprocessed_data
 

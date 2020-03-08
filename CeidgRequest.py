@@ -14,8 +14,8 @@ cl = Client(wsdl=url)
 
 # Defining requested time range of data --------------------------------------------------------------------------------
 
-start_date = date(2005, 1, 1)
-end_date = date(2005, 12, 31)
+start_date = date(1990, 1, 1)
+end_date = date(1990, 12, 31)
 delta = timedelta(weeks=4)
 
 results = []
@@ -30,17 +30,17 @@ while start_date < end_date:
     start_date += delta
 
 
-# with open('ceidg_ids_2005.pickle', 'wb') as file:
-#     file.write(pickle.dumps(results))
+with open('ceidg_ids_1991.pickle', 'wb') as file:
+    file.write(pickle.dumps(results))
 
-ceidg_ids = open('ceidg_ids_2005.pickle', 'rb')
+ceidg_ids = open('ceidg_ids_1995.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
-j = 100000
-k = 110000
+j = 40000
+k = 50000
 
-while k <= 130000:
-    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[130000:134365], path=os.getcwd() + '/downloaded_nips/')
+while k <= 70000:
+    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[70000:len(ceidg_ids)], path=os.getcwd() + '/downloaded_nips/')
     j += 10000
     k += 10000
 
