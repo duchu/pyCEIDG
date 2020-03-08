@@ -1,8 +1,6 @@
-import pymongo
-import random
+
 import pandas as pd
 from datetime import timedelta
-from config import password
 from funs import functions as f
 
 preprocessed_data = pd.read_feather('results/raw_data.feather')
@@ -14,7 +12,6 @@ preprocessed_data = pd.read_feather('results/raw_data.feather')
 # -- Imputing missing values -------------------------------------------------------------------------------------------
 
 preprocessed_data['NoOfPastBusinesses'] = preprocessed_data.NoOfPastBusinesses.fillna(0).astype(int)
-
 
 # -- Creating new variables from existing ones -------------------------------------------------------------------------
 
@@ -28,13 +25,14 @@ delta = timedelta(days=365)
 preprocessed_data['RandomDatePlus12M'] = preprocessed_data.RandomDate + delta
 
 preprocessed_data['DurationOfExistenceInMonths'] = f.month_diff(preprocessed_data.RandomDate,
-                                                               preprocessed_data.StartingDateOfTheBusiness)
+                                                                preprocessed_data.StartingDateOfTheBusiness)
 preprocessed_data['DurationOfExistenceInMonths'] = preprocessed_data.DurationOfExistenceInMonths.astype(int)
 
 # - Month and Quarter based on  Starting of the Business and Date of Scoring
 
 preprocessed_data['MonthOfStartingOfTheBusiness'] = preprocessed_data.StartingDateOfTheBusiness.dt.month_name()
-preprocessed_data['QuarterOfStartingOfTheBusiness'] = preprocessed_data.StartingDateOfTheBusiness.dt.quarter.astype(object)
+preprocessed_data['QuarterOfStartingOfTheBusiness'] = preprocessed_data.StartingDateOfTheBusiness.dt.quarter.astype(
+    object)
 
 preprocessed_data['MonthOfRandomDate'] = preprocessed_data.RandomDate.dt.month_name()
 preprocessed_data['QuarterOfRandomDate'] = preprocessed_data.RandomDate.dt.quarter.astype(object)

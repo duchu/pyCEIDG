@@ -8,7 +8,7 @@ entries = db['entries']
 
 # TODO Improve Sex feature by take nationality into acount
 # TODO Correct order of converting string to dates, romove duplicated conversion
-# TODO Consider dealing with entries with 'art. 61 Ustawy' - powód usunięcia: brak PESEL
+
 
 query_result = entries.aggregate([
     {'$addFields':
@@ -16,6 +16,17 @@ query_result = entries.aggregate([
               {'$ifNull':
                    ['$DaneDodatkowe.DataWykresleniaWpisuZRejestru',
                     '$DaneDodatkowe.DataZaprzestaniaWykonywaniaDzialalnosciGospodarczej']
+               },
+          'DeletedPESEL':
+              {'$regexMatch':
+                   {'input': {'$cond':
+                                  [{'$isArray': '$DaneDodatkowe.PodstawaPrawnaWykreslenia.Informacja'},
+                                   'some string',
+                                   '$DaneDodatkowe.PodstawaPrawnaWykreslenia.Informacja']
+                              },
+                    'regex': '^art. 61',
+                    'options': 'i'
+                    }
                }
           }
      },
@@ -42,7 +53,7 @@ query_result = entries.aggregate([
                           }
                      },
                     '$DaneDodatkowe.DataZawieszeniaWykonywaniaDzialalnosciGospodarczej']
-               }
+               },
           }
      },
     {'$addFields':
@@ -67,7 +78,8 @@ query_result = entries.aggregate([
     }
     },
     {'$match': {'DanePodstawowe.NIP': {'$ne': None},
-                'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lt': '2018-11-01'}
+                'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej': {'$lt': '2018-11-01'},
+                'DeletedPESEL': False
                 }
      },
     {'$match':
@@ -138,7 +150,7 @@ query_result = entries.aggregate([
                                                  'regex': 'Polska',
                                                  'options': 'i'
                                                  }
-        },
+                                 },
         'NoOfCitizenships': {'$size': {
             '$ifNull': [{'$split': ['$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw', ', ']}, []]
         }
@@ -164,7 +176,8 @@ query_result = entries.aggregate([
                      'in': {'$substrCP': ['$$new', 0, 4]}
                      }
         }
-    }},
+    }
+    },
     {'$addFields':
         {'AllPKDSections': {
             '$map': {'input': '$AllPKDDivisions',
