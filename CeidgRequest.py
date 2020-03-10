@@ -30,17 +30,17 @@ while start_date < end_date:
     start_date += delta
 
 
-with open('data/ceidg_ids_1991.pickle', 'wb') as file:
-    file.write(pickle.dumps(results))
+# with open('data/ceidg_ids_1991.pickle', 'wb') as file:
+#     file.write(pickle.dumps(results))
 
-ceidg_ids = open('data/ceidg_ids_1995.pickle', 'rb')
+ceidg_ids = open('data/ceidg_ids_1994.pickle', 'rb')
 ceidg_ids = pickle.load(ceidg_ids)
 
-j = 40000
-k = 50000
+j = 0
+k = 10000
 
-while k <= 70000:
-    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[70000:len(ceidg_ids)], path=os.getcwd() + '/downloaded_nips/')
+while k <= 60000:
+    api.get_ceidg_data(config.password, 'UniqueId', ceidg_ids[60000:len(ceidg_ids)], path=os.getcwd() + '/downloaded_nips/')
     j += 10000
     k += 10000
 
