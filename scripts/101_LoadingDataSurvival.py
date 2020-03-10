@@ -58,7 +58,7 @@ query_result = entries.aggregate([
         }
     },
     {'$match': {'DaneDodatkowe.DataRozpoczeciaWykonywaniaDzialalnosciGospodarczej':
-                    {'$gte': '2010-01-01', '$lte': '2015-01-01'},
+                    {'$gte': '2011-01-01', '$lt': '2012-01-01'},
                 'DanePodstawowe.NIP': {'$ne': None}
                 }
      },
@@ -130,9 +130,10 @@ query_result = entries.aggregate([
                                                  'regex': 'Polska',
                                                  'options': 'i'
                                                  }
-        },
+                                 },
         'NoOfCitizenships': {'$size': {
-            '$ifNull': [{'$split': ['$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw', ', ']}, []]}
+            '$ifNull': [{'$split': ['$DaneAdresowe.PrzedsiebiorcaPosiadaObywatelstwaPanstw', ', ']}, []]
+        }
         },
         'ShareholderInOtherCompanies': {'$ne': ['$SpolkiCywilneKtorychWspolnikiemJestPrzedsiebiorca', None]},
         'KodyPKD': '$DaneDodatkowe.KodyPKD',
@@ -265,7 +266,7 @@ query_result = entries.aggregate([
          {'_id': 0,
           'NIP': 1,
           'Status': 1,
-          'StartingDateOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
+          'DateOfStartingOfTheBusiness': {'$toDate': '$StartingDateOfTheBusiness'},
           'DateOfTermination': 1,
           'MainAddressCounty': 1,
           'MainAddressVoivodeship': 1,
