@@ -30,3 +30,8 @@ data/__pycache__/
 /data/ceidg_ids_2009.pickle
 /data/ceidg_ids_1992.pickle
 /data/ceidg_ids_1991.pickle
+/results/ceidg_data.feather
+/results/raw_data.feather
+/results/ceidg_data_sample.feather
+/results/ceidg_data_sample.pickle
+/results/raw_data_surv.feather
