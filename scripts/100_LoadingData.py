@@ -99,8 +99,10 @@ query_result = entries.aggregate([
         'MainAddressVoivodeship': {
             '$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Wojewodztwo'
         },
+        'MainAddressTERC': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.TERC',
         'CorrespondenceAddressCounty': {'$toUpper': '$DaneAdresowe.AdresDoDoreczen.Powiat'},
         'CorrespondenceAddressVoivodeship': {'$toUpper': '$DaneAdresowe.AdresDoDoreczen.Wojewodztwo'},
+        'CorrespondenceAddressTERC': '$DaneAdresowe.AdresDoDoreczen.TERC',
         'MainAndCorrespondenceAreTheSame': {
             '$and':
                 [{'$eq': ['$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.SIMC',
@@ -308,8 +310,10 @@ query_result = entries.aggregate([
           'EndDate': 1,
           'MainAddressCounty': 1,
           'MainAddressVoivodeship': 1,
+          'MainAddressTERC': 1,
           'CorrespondenceAddressCounty': 1,
           'CorrespondenceAddressVoivodeship': 1,
+          'CorrespondenceAddressTERC': 1,
           'MainAndCorrespondenceAreTheSame': 1,
           'NoOfAdditionalPlaceOfTheBusiness': 1,
           'IsPhoneNo': 1,
@@ -331,7 +335,7 @@ query_result = entries.aggregate([
           'NoOfUniquePKDSections': 1,
           'NoOfUniquePKDDivsions': 1,
           'NoOfUniquePKDGroups': 1,
-          'NoOfUniquePKDClasses': 1
+          'NoOfUniquePKDClasses': 1,
           }
      },
     # {'$limit': 10000},
