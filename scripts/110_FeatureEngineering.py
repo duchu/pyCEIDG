@@ -1,15 +1,12 @@
-
 import pandas as pd
 from datetime import timedelta
 from funs import functions as f
 
 preprocessed_data = pd.read_feather('results/raw_data.feather')
 
-
 # -- Imputing missing values -------------------------------------------------------------------------------------------
 
 preprocessed_data['NoOfPastBusinesses'] = preprocessed_data.NoOfPastBusinesses.fillna(0).astype(int)
-
 
 # -- Creating new variables from existing ones -------------------------------------------------------------------------
 
@@ -42,8 +39,38 @@ preprocessed_data['Target'] = preprocessed_data.Target.astype(bool)
 cols_to_drop = ['Status', 'StartDate', 'EndDate', 'StartingDateOfTheBusiness', 'RandomDatePlus12M', 'Status', 'NIP']
 preprocessed_data = preprocessed_data.drop(columns=cols_to_drop)
 
-
 # -- save DataFrame to file --------------------------------------------------------------------------------------------
 
-preprocessed_data.to_csv('results/ceidg_data_classif.csv', index=False)
+columns_names = ['RandomDate',
+                 'MonthOfStartingOfTheBusiness',
+                 'QuarterOfStartingOfTheBusiness',
+                 'MainAddressVoivodeship',
+                 'MainAddressCounty',
+                 'MainAddressTERC',
+                 'CorrespondenceAddressVoivodeship',
+                 'CorrespondenceAddressCounty',
+                 'CorrespondenceAddressTERC',
+                 'MainAndCorrespondenceAreTheSame',
+                 'DurationOfExistenceInMonths',
+                 'NoOfAdditionalPlaceOfTheBusiness',
+                 'IsPhoneNo',
+                 'IsEmail',
+                 'IsWWW',
+                 'CommunityProperty',
+                 'HasLicences',
+                 'NoOfLicences',
+                 'Sex',
+                 'HasPolishCitizenship',
+                 'ShareholderInOtherCompanies',
+                 'PKDMainSection',
+                 'PKDMainDivision',
+                 'PKDMainGroup',
+                 'PKDMainClass',
+                 'NoOfUniquePKDSections',
+                 'NoOfUniquePKDDivsions',
+                 'NoOfUniquePKDGroups',
+                 'NoOfUniquePKDClasses',
+                 'Target']
 
+preprocessed_data = preprocessed_data.reindex(columns=columns_names)
+preprocessed_data.to_csv('results/ceidg_data_classif.csv', index=False, encoding='UTF-8')

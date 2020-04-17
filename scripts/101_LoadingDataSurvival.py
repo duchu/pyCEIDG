@@ -307,4 +307,39 @@ del query_result
 raw_data_surv['YearOfStartingOfTheBusiness'] = raw_data_surv.DateOfStartingOfTheBusiness.dt.strftime('%Y').astype(int)
 raw_data_surv = raw_data_surv.drop(columns='NIP')
 
-raw_data_surv.to_csv('results/ceidg_data_surv.csv', index=False)
+columns_names = ['Status',
+                 'YearOfStartingOfTheBusiness',
+                 'StartingDateOfTheBusiness',
+                 'DateOfTermination',
+                 'Terminated',
+                 'DurationOfExistenceInMonths'
+                 'MainAddressVoivodeship',
+                 'MainAddressCounty',
+                 'MainAddressTERC',
+                 'CorrespondenceAddressVoivodeship',
+                 'CorrespondenceAddressCounty',
+                 'CorrespondenceAddressTERC',
+                 'MainAndCorrespondenceAreTheSame',
+                 'DurationOfExistenceInMonths',
+                 'NoOfAdditionalPlaceOfTheBusiness',
+                 'IsPhoneNo',
+                 'IsEmail',
+                 'IsWWW',
+                 'CommunityProperty',
+                 'HasLicences',
+                 'NoOfLicences',
+                 'Sex',
+                 'HasPolishCitizenship',
+                 'ShareholderInOtherCompanies',
+                 'PKDMainSection',
+                 'PKDMainDivision',
+                 'PKDMainGroup',
+                 'PKDMainClass',
+                 'NoOfUniquePKDSections',
+                 'NoOfUniquePKDDivsions',
+                 'NoOfUniquePKDGroups',
+                 'NoOfUniquePKDClasses']
+
+raw_data_surv = raw_data_surv.reindex(columns=columns_names)
+
+raw_data_surv.to_csv('results/ceidg_data_surv.csv', index=False, encoding='UTF-8')
