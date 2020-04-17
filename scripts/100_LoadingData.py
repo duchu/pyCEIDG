@@ -338,7 +338,7 @@ query_result = entries.aggregate([
           'NoOfUniquePKDClasses': 1,
           }
      },
-    # {'$limit': 10000},
+    # {'$limit': 100},
 
 ])
 

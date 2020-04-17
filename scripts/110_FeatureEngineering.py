@@ -5,13 +5,11 @@ from funs import functions as f
 
 preprocessed_data = pd.read_feather('results/raw_data.feather')
 
-# preprocessed_data = raw_data.sample(100000)
-
-# del raw_data
 
 # -- Imputing missing values -------------------------------------------------------------------------------------------
 
 preprocessed_data['NoOfPastBusinesses'] = preprocessed_data.NoOfPastBusinesses.fillna(0).astype(int)
+
 
 # -- Creating new variables from existing ones -------------------------------------------------------------------------
 
@@ -34,9 +32,6 @@ preprocessed_data['MonthOfStartingOfTheBusiness'] = preprocessed_data.StartingDa
 preprocessed_data['QuarterOfStartingOfTheBusiness'] = preprocessed_data.StartingDateOfTheBusiness.dt.quarter.astype(
     object)
 
-preprocessed_data['MonthOfRandomDate'] = preprocessed_data.RandomDate.dt.month_name()
-preprocessed_data['QuarterOfRandomDate'] = preprocessed_data.RandomDate.dt.quarter.astype(object)
-
 preprocessed_data['RandomDate'] = preprocessed_data.RandomDate.dt.strftime('%Y-%m-%d')
 
 #  -- Target varibale
@@ -44,11 +39,11 @@ preprocessed_data['RandomDate'] = preprocessed_data.RandomDate.dt.strftime('%Y-%
 preprocessed_data['Target'] = preprocessed_data.RandomDatePlus12M > preprocessed_data.DateOfTerminationOrSuspension
 preprocessed_data['Target'] = preprocessed_data.Target.astype(bool)
 
-cols_to_drop = ['Status', 'StartDate', 'EndDate', 'StartingDateOfTheBusiness', 'RandomDatePlus12M', 'Status']
+cols_to_drop = ['Status', 'StartDate', 'EndDate', 'StartingDateOfTheBusiness', 'RandomDatePlus12M', 'Status', 'NIP']
 preprocessed_data = preprocessed_data.drop(columns=cols_to_drop)
 
-preprocessed_data = preprocessed_data.reset_index()
 
-# -- save DataFrame to files -------------------------------------------------------------------------------------------
+# -- save DataFrame to file --------------------------------------------------------------------------------------------
 
-preprocessed_data.to_feather('results/ceidg_data.feather')
+preprocessed_data.to_csv('results/ceidg_data_classif.csv', index=False)
+

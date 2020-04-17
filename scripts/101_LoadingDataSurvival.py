@@ -79,8 +79,10 @@ query_result = entries.aggregate([
         'MainAddressVoivodeship': {
             '$toUpper': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.Wojewodztwo'
         },
+        'MainAddressTERC': '$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.TERC',
         'CorrespondenceAddressCounty': {'$toUpper': '$DaneAdresowe.AdresDoDoreczen.Powiat'},
         'CorrespondenceAddressVoivodeship': {'$toUpper': '$DaneAdresowe.AdresDoDoreczen.Wojewodztwo'},
+        'CorrespondenceAddressTERC': '$DaneAdresowe.AdresDoDoreczen.TERC',
         'MainAndCorrespondenceAreTheSame': {
             '$and':
                 [{'$eq': ['$DaneAdresowe.AdresGlownegoMiejscaWykonywaniaDzialalnosci.SIMC',
@@ -270,8 +272,10 @@ query_result = entries.aggregate([
           'DateOfTermination': 1,
           'MainAddressCounty': 1,
           'MainAddressVoivodeship': 1,
+          'MainAddressTERC': 1,
           'CorrespondenceAddressCounty': 1,
           'CorrespondenceAddressVoivodeship': 1,
+          'CorrespondenceAddressTERC': 1,
           'MainAndCorrespondenceAreTheSame': 1,
           'NoOfAdditionalPlaceOfTheBusiness': 1,
           'IsPhoneNo': 1,
@@ -300,6 +304,7 @@ raw_data_surv = pd.DataFrame(list(query_result))
 
 del query_result
 
-raw_data_surv['YearOfStartingOfTheBusiness'] = raw_data_surv.StartingDateOfTheBusiness.dt.strftime('%Y').astype(int)
+raw_data_surv['YearOfStartingOfTheBusiness'] = raw_data_surv.DateOfStartingOfTheBusiness.dt.strftime('%Y').astype(int)
+raw_data_surv = raw_data_surv.drop(columns='NIP')
 
-raw_data_surv.to_feather('results/raw_data_surv.feather')
+raw_data_surv.to_csv('results/ceidg_data_surv.csv', index=False)
